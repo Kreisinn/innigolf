@@ -1,0 +1,529 @@
+<title>Trackman Winter League</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column, scorecard-like tables; season chips on top, tabs below. */
+:root {
+  --bg: #eef2ee;
+  --surface: #ffffff;
+  --sunk: #e3e9e4;
+  --ink: #15211a;
+  --muted: #5b6b61;
+  --line: #cfd8d1;
+  --turf: #1d6f46;
+  --turf-ink: #ffffff;
+  --turf-soft: #d5ebdd;
+  --flag: #c4432c;
+  --gold: #b88a16;
+  --display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1511; --surface: #16201a; --sunk: #1d2a22; --ink: #e4ece6; --muted: #93a49a;
+  --line: #2c3b32; --turf: #47b97d; --turf-ink: #07130c; --turf-soft: #1f3d2b; --flag: #ef7a62; --gold: #e0b443;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1511; --surface: #16201a; --sunk: #1d2a22; --ink: #e4ece6; --muted: #93a49a;
+  --line: #2c3b32; --turf: #47b97d; --turf-ink: #07130c; --turf-soft: #1f3d2b; --flag: #ef7a62; --gold: #e0b443;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+.wrap { max-width: 960px; margin: 0 auto; padding-block: 24px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font: 700 2.3rem/1 var(--display); letter-spacing: .01em; margin: 0; text-transform: uppercase; }
+h1 small { display: block; font: 500 .95rem/1.4 var(--body); text-transform: none; color: var(--muted); letter-spacing: 0; margin-top: 6px; }
+h2 { font: 600 1.35rem/1.2 var(--display); text-transform: uppercase; letter-spacing: .03em; margin: 0; text-wrap: balance; }
+.label { font: 600 .75rem/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+.seasons { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px;
+  padding: 7px 14px; font: 600 .95rem/1.1 var(--body); cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
+.chip small { font-weight: 400; color: var(--muted); font-size: .8rem; }
+.chip[aria-pressed="true"] { background: var(--turf); border-color: var(--turf); color: var(--turf-ink); }
+.chip[aria-pressed="true"] small { color: inherit; opacity: .8; }
+.live { width: 8px; height: 8px; border-radius: 50%; background: var(--flag); display: inline-block; align-self: center; }
+
+nav.tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--line); overflow-x: auto; }
+nav.tabs button { background: none; border: 0; padding: 10px 14px; font: 600 1.05rem/1 var(--display); text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--turf); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.facts div { display: grid; gap: 4px; }
+.facts b { font: 600 1.4rem/1 var(--display); }
+.bar { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; min-width: 120px; }
+.bar i { display: block; height: 100%; background: var(--turf); }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); color: var(--muted); padding: 7px 12px; font: 600 .9rem/1 var(--body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+
+.scroll { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th { font: 600 .72rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); text-align: left; padding: 8px 8px; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th.r, td.r { text-align: right; }
+td.rank { font: 700 1.25rem/1 var(--display); width: 2.5em; color: var(--muted); }
+tr.lead td.rank { color: var(--gold); }
+td.player { font-weight: 600; white-space: nowrap; }
+td.total { font: 700 1.5rem/1 var(--display); text-align: right; }
+.cards { display: flex; flex-wrap: wrap; gap: 4px; }
+.sc { min-width: 2.1em; text-align: center; padding: 3px 5px; border-radius: 4px; font: 600 .85rem/1.1 var(--body); background: var(--sunk); color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.sc.counts { background: var(--turf-soft); color: var(--ink); text-decoration: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--turf) 45%, transparent); }
+.pill { display: inline-block; font: 600 .7rem/1 var(--body); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); }
+
+.round { display: grid; gap: 8px; padding-block: 12px; border-bottom: 1px solid var(--line); }
+.round:last-child { border-bottom: 0; }
+.round .who { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .95rem; }
+.round .who span b { font-variant-numeric: tabular-nums; }
+
+label.f { display: grid; gap: 5px; font: 600 .78rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+input, select { font: 16px/1.3 var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; width: 100%; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 9px 14px; font: 600 .95rem/1 var(--body); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.btn.primary { background: var(--turf); border-color: var(--turf); color: var(--turf-ink); }
+.btn.danger { color: var(--flag); }
+.btn.small { padding: 6px 10px; font-size: .85rem; }
+.btn:disabled { opacity: .5; cursor: default; }
+.drop { border: 2px dashed var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 10px; justify-items: start; background: var(--bg); }
+.drop.over { border-color: var(--turf); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumbs img { width: 92px; height: 92px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+.entry td { padding: 6px 4px; }
+.entry input { padding: 6px 8px; }
+.entry td.n input { width: 5.2em; text-align: right; }
+.note { padding: 10px 12px; border-radius: 8px; background: var(--sunk); font-size: .93rem; }
+.note.warn { background: color-mix(in srgb, var(--flag) 14%, var(--surface)); }
+.note.ok { background: var(--turf-soft); }
+.empty { text-align: center; padding: 28px 12px; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+.rules { font-size: .92rem; color: var(--muted); max-width: 65ch; }
+@media (prefers-reduced-motion: no-preference) { .chip, .btn, nav.tabs button { transition: background .15s, color .15s, border-color .15s; } }
+@media (max-width: 560px) { .hide-sm { display: none; } h1 { font-size: 1.9rem; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Trackman Winter League<small>Stableford standings, best rounds count</small></h1>
+    <div id="status" class="label"></div>
+  </header>
+  <div class="seasons" id="seasons" role="group" aria-label="Competition"></div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="standings" id="tab-standings">Standings</button>
+    <button role="tab" data-tab="add" id="tab-add">Add round</button>
+    <button role="tab" data-tab="rounds" id="tab-rounds">Rounds</button>
+    <button role="tab" data-tab="settings" id="tab-settings">Competitions</button>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<script>
+/*STANDINGS*/
+
+const S = {
+  db: null, user: null, sample: null, imagesOK: false,
+  dbState: 'loading', canWrite: true, canEdit: false,
+  seasons: [], rounds: [], seasonsLoaded: false, roundsLoaded: false,
+  seasonId: null, tab: 'standings', metric: 'points',
+  draft: null, photos: [], reading: false, readMsg: null, saveMsg: null,
+  confirmDelete: null, editSeason: null,
+};
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch { return d; } };
+const fmtDateLong = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); } catch { return d; } };
+
+try { const t = localStorage.getItem('twl-tab'); if (t) S.tab = t; } catch {}
+
+function newDraft() {
+  return { id: null, date: today(), course: '', scores: [blankScore(), blankScore(), blankScore(), blankScore()] };
+}
+function blankScore() { return { player: '', hcp: '', gross: '', points: '' }; }
+S.draft = newDraft();
+
+function sortedSeasons() { return [...S.seasons].sort((a, b) => a.start.localeCompare(b.start)); }
+function currentSeason() { return S.seasons.find(s => s.id === S.seasonId) || null; }
+function pickDefaultSeason() {
+  const list = sortedSeasons();
+  if (!list.length) return null;
+  const t = today();
+  return (list.find(s => s.start <= t && t <= s.end) || list.find(s => s.start > t) || list[list.length - 1]).id;
+}
+function knownPlayers() {
+  const m = new Map();
+  for (const r of S.rounds) for (const s of r.scores || []) {
+    const n = String(s.player || '').trim(); if (n && !m.has(n.toLowerCase())) m.set(n.toLowerCase(), n);
+  }
+  return [...m.values()].sort((a, b) => a.localeCompare(b));
+}
+
+/* ---------- render ---------- */
+function render() {
+  renderSeasons();
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
+  $('#status').textContent = S.dbState === 'off' ? 'Offline preview' : S.dbState === 'loading' ? 'Loading…' : (S.canWrite ? '' : 'View only');
+  const m = $('#main');
+  if (S.dbState === 'off') { m.innerHTML = `<div class="panel empty"><h2>Open this page in Claude to use it</h2><p>Scores are saved in the league's shared store, which is only available when the page is opened from its claude.ai link while signed in.</p></div>`; return; }
+  if (S.tab === 'standings') m.innerHTML = viewStandings();
+  else if (S.tab === 'add') m.innerHTML = viewAdd();
+  else if (S.tab === 'rounds') m.innerHTML = viewRounds();
+  else m.innerHTML = viewSettings();
+}
+
+function renderSeasons() {
+  const t = today();
+  const list = sortedSeasons();
+  $('#seasons').innerHTML = list.length ? list.map(s => {
+    const live = s.start <= t && t <= s.end;
+    return `<button class="chip" aria-pressed="${s.id === S.seasonId}" data-season="${esc(s.id)}">${live ? '<span class="live" title="In progress"></span>' : ''}${esc(s.name)}<small>${fmtDate(s.start)} – ${fmtDate(s.end)}</small></button>`;
+  }).join('') : (S.seasonsLoaded ? '<span class="muted">No competitions yet. Add one under Competitions.</span>' : '');
+}
+
+function viewStandings() {
+  const season = currentSeason();
+  if (!season) return `<div class="panel empty"><h2>No competition selected</h2><p>${S.seasonsLoaded ? 'Create the autumn, Christmas and spring competitions under Competitions.' : 'Loading competitions…'}</p></div>`;
+  const st = computeStandings(season, S.rounds, S.metric);
+  const x = Number(season.plannedRounds) || 0;
+  const pct = x ? Math.min(100, Math.round(st.roundCount / x * 100)) : 0;
+  const unit = S.metric === 'points' ? 'pts' : 'strokes';
+  const head = `
+    <div class="row">
+      <div class="facts">
+        <div><span class="label">Rounds played</span><b class="num">${st.roundCount}${x ? ` / ${x}` : ''}</b></div>
+        <div><span class="label">Counting</span><b class="num">Best ${st.y}</b></div>
+        <div><span class="label">Players</span><b class="num">${st.rows.length}</b></div>
+      </div>
+      <div class="seg" role="group" aria-label="Ranking">
+        <button data-metric="points" aria-pressed="${S.metric === 'points'}">Stableford</button>
+        <button data-metric="gross" aria-pressed="${S.metric === 'gross'}">Gross</button>
+      </div>
+    </div>
+    ${x ? `<div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ''}`;
+  if (!st.rows.length) return `<div class="panel">${head}<div class="empty"><h2>No rounds yet</h2><p>Snap the Trackman scorecard after your first round of ${esc(season.name)} and add it here.</p><button class="btn primary" data-go="add">Add a round</button></div></div>`;
+  const rows = st.rows.map(r => `
+    <tr class="${r.rank === 1 ? 'lead' : ''}">
+      <td class="rank">${r.rank}</td>
+      <td class="player">${esc(r.name)}${!r.complete && S.metric === 'gross' ? ' <span class="pill">Needs ' + (st.y - r.counting.length) + '</span>' : ''}</td>
+      <td><div class="cards">${r.entries.map(e => e[S.metric] == null ? '' : `<span class="sc ${e.counts ? 'counts' : ''}" title="${fmtDateLong(e.date)}${e.counts ? '' : ' (dropped)'}">${e[S.metric]}</span>`).join('')}</div></td>
+      <td class="r num hide-sm">${r.played}</td>
+      <td class="r num hide-sm">${r.best ?? '–'}</td>
+      <td class="r num hide-sm">${r.avg == null ? '–' : r.avg.toFixed(1)}</td>
+      <td class="total num">${S.metric === 'points' ? r.total : (r.avg == null ? '–' : r.total)}</td>
+    </tr>`).join('');
+  return `<div class="panel">${head}
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Player</th><th>Rounds (counting highlighted)</th><th class="r hide-sm">Played</th><th class="r hide-sm">Best</th><th class="r hide-sm">Avg</th><th class="r">${S.metric === 'points' ? 'Best ' + st.y + ' pts' : 'Best ' + st.y + ' strokes'}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <p class="rules">${S.metric === 'points'
+      ? `Ranked on the total Stableford points of each player's best ${st.y} rounds in ${esc(season.name)}. Ties are split on the best single counting round, then the next best. Struck-through scores are dropped.`
+      : `Ranked on the lowest average gross over each player's best ${st.y} rounds. Players with fewer than ${st.y} rounds sit below those with a full set.`}</p>
+  </div>`;
+}
+
+function viewAdd() {
+  if (!S.canWrite) return `<div class="panel empty"><h2>View only</h2><p>Ask the league organiser for Contributor access to add rounds.</p></div>`;
+  const d = S.draft;
+  const season = seasonForDate(S.seasons, d.date);
+  const players = knownPlayers();
+  const dupes = d.date ? S.rounds.filter(r => r.date === d.date && r.id !== d.id) : [];
+  const photo = S.sample && S.imagesOK ? `
+    <div class="drop" id="drop">
+      <div><h2>1 · Scorecard photo</h2><div class="muted">Take a photo of the Trackman scorecard (or a screenshot). Claude reads names, handicaps, gross and Stableford points. Check the numbers before saving.</div></div>
+      <div class="row" style="justify-content:start">
+        <label class="btn" for="photo-input">Choose photos</label>
+        <input id="photo-input" type="file" accept="image/*" multiple hidden>
+        <button class="btn primary" id="read-btn" ${S.photos.length && !S.reading ? '' : 'disabled'}>${S.reading ? 'Reading scorecard…' : 'Read scorecard'}</button>
+      </div>
+      ${S.photos.length ? `<div class="thumbs">${S.photos.map(p => `<img src="${p.url}" alt="Scorecard photo">`).join('')}</div>` : ''}
+      ${S.readMsg ? `<div class="note ${S.readMsg.kind}">${esc(S.readMsg.text)}</div>` : ''}
+    </div>` : `<div class="note">Photo reading isn't available in this view. Enter the scores by hand below.</div>`;
+  return `<div class="panel">
+    ${d.id ? `<div class="note">Editing the round from ${fmtDateLong(d.date)}. <button class="btn small" id="cancel-edit">Cancel</button></div>` : photo}
+    <h2>${d.id ? 'Round details' : '2 · Check and save'}</h2>
+    <div class="grid2">
+      <label class="f" for="f-date">Date<input id="f-date" type="date" value="${esc(d.date)}"></label>
+      <label class="f" for="f-course">Course<input id="f-course" value="${esc(d.course)}" placeholder="e.g. Pebble Beach"></label>
+    </div>
+    <div class="note ${season ? 'ok' : 'warn'}">${season ? `Counts toward <b>${esc(season.name)}</b>.` : 'This date is outside every competition. It will be saved but not counted.'}${dupes.length ? ` A round on this date is already saved (${dupes.map(r => esc(r.course || 'no course')).join(', ')}).` : ''}</div>
+    <datalist id="players">${players.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+    <div class="scroll"><table class="entry">
+      <thead><tr><th>Player</th><th class="r">Hcp</th><th class="r">Gross</th><th class="r">Points</th><th></th></tr></thead>
+      <tbody>${d.scores.map((s, i) => `<tr>
+        <td><input id="s-${i}-player" data-i="${i}" data-k="player" list="players" value="${esc(s.player)}" placeholder="Name" style="min-width:9em"></td>
+        <td class="n"><input id="s-${i}-hcp" data-i="${i}" data-k="hcp" inputmode="decimal" value="${esc(s.hcp)}"></td>
+        <td class="n"><input id="s-${i}-gross" data-i="${i}" data-k="gross" inputmode="numeric" value="${esc(s.gross)}"></td>
+        <td class="n"><input id="s-${i}-points" data-i="${i}" data-k="points" inputmode="numeric" value="${esc(s.points)}"></td>
+        <td><button class="btn small" data-remove="${i}" aria-label="Remove row">✕</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div class="row">
+      <button class="btn" id="add-row">Add player</button>
+      <div class="row">
+        ${S.saveMsg ? `<span class="${S.saveMsg.kind === 'warn' ? '' : 'muted'}" style="${S.saveMsg.kind === 'warn' ? 'color:var(--flag)' : ''}">${esc(S.saveMsg.text)}</span>` : ''}
+        <button class="btn primary" id="save-round">${d.id ? 'Save changes' : 'Save round'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewRounds() {
+  const season = currentSeason();
+  const list = [...S.rounds].filter(r => !season || (r.date >= season.start && r.date <= season.end)).sort((a, b) => b.date.localeCompare(a.date));
+  const outside = S.rounds.filter(r => !seasonForDate(S.seasons, r.date)).length;
+  if (!list.length) return `<div class="panel empty"><h2>No rounds in ${esc(season?.name || 'this competition')}</h2><button class="btn primary" data-go="add">Add a round</button></div>`;
+  return `<div class="panel">
+    <div class="row"><h2>${esc(season?.name || 'All rounds')} · ${list.length} round${list.length === 1 ? '' : 's'}</h2></div>
+    ${list.map(r => {
+      const sc = [...(r.scores || [])].sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
+      return `<div class="round">
+        <div class="row"><div><b>${fmtDateLong(r.date)}</b> <span class="muted">${esc(r.course || '')}</span></div>
+        ${S.canWrite ? `<div class="row">${S.confirmDelete === r.id
+          ? `<span class="muted">Delete this round?</span><button class="btn small danger" data-del-yes="${esc(r.id)}">Delete</button><button class="btn small" data-del-no>Keep</button>`
+          : `<button class="btn small" data-edit="${esc(r.id)}">Edit</button><button class="btn small danger" data-del="${esc(r.id)}">Delete</button>`}</div>` : ''}</div>
+        <div class="who">${sc.map(s => `<span>${esc(s.player)} <b>${s.points ?? '–'}</b><span class="muted"> pts · ${s.gross ?? '–'}</span></span>`).join('')}</div>
+      </div>`;
+    }).join('')}
+    ${outside ? `<p class="rules">${outside} saved round${outside === 1 ? ' falls' : 's fall'} outside every competition's dates.</p>` : ''}
+  </div>`;
+}
+
+function viewSettings() {
+  const list = sortedSeasons();
+  const e = S.editSeason;
+  const form = e ? `<div class="panel">
+      <h2>${e.id ? 'Edit ' + esc(e.name) : 'New competition'}</h2>
+      <div class="grid2">
+        <label class="f" for="e-name">Name<input id="e-name" value="${esc(e.name)}"></label>
+        <label class="f" for="e-start">Starts<input id="e-start" type="date" value="${esc(e.start)}"></label>
+        <label class="f" for="e-end">Ends<input id="e-end" type="date" value="${esc(e.end)}"></label>
+        <label class="f" for="e-planned">Rounds planned (x)<input id="e-planned" type="number" min="1" value="${esc(e.plannedRounds)}"></label>
+        <label class="f" for="e-best">Best rounds that count (y)<input id="e-best" type="number" min="1" value="${esc(e.bestOf)}"></label>
+      </div>
+      <div class="row"><span id="e-msg" style="color:var(--flag)"></span><div class="row">
+        ${e.id ? (S.confirmDelete === 'season:' + e.id ? `<span class="muted">Remove competition? Rounds stay saved.</span><button class="btn danger" id="e-del-yes">Remove</button>` : `<button class="btn danger" id="e-del">Remove</button>`) : ''}
+        <button class="btn" id="e-cancel">Cancel</button><button class="btn primary" id="e-save">Save</button></div></div>
+    </div>` : '';
+  return `<div style="display:grid;gap:14px">${form}<div class="panel">
+    <div class="row"><h2>Competitions this winter</h2>${S.canEdit && !e ? '<button class="btn" id="e-new">New competition</button>' : ''}</div>
+    <div class="scroll"><table>
+      <thead><tr><th>Competition</th><th>Dates</th><th class="r">Played</th><th class="r">Planned (x)</th><th class="r">Counting (y)</th><th></th></tr></thead>
+      <tbody>${list.map(s => {
+        const played = S.rounds.filter(r => r.date >= s.start && r.date <= s.end).length;
+        return `<tr><td class="player">${esc(s.name)}</td><td class="num">${fmtDate(s.start)} – ${fmtDate(s.end)}</td><td class="r num">${played}</td><td class="r num">${s.plannedRounds ?? '–'}</td><td class="r num">${s.bestOf}</td>
+        <td class="r">${S.canEdit ? `<button class="btn small" data-eseason="${esc(s.id)}">Edit</button>` : ''}</td></tr>`;
+      }).join('') || '<tr><td colspan="6" class="muted">None yet.</td></tr>'}</tbody>
+    </table></div>
+    <p class="rules">Each competition starts from zero. A round belongs to the competition whose dates include it. ${S.canEdit ? '' : 'Only the league organiser can change these.'}</p>
+  </div></div>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', async ev => {
+  const t = ev.target.closest('button, [data-go]');
+  if (!t) return;
+  if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('twl-tab', S.tab); } catch {} S.confirmDelete = null; render(); return; }
+  if (t.dataset.go) { S.tab = t.dataset.go; render(); return; }
+  if (t.dataset.season) { S.seasonId = t.dataset.season; render(); return; }
+  if (t.dataset.metric) { S.metric = t.dataset.metric; render(); return; }
+  if (t.id === 'add-row') { S.draft.scores.push(blankScore()); render(); focus(`#s-${S.draft.scores.length - 1}-player`); return; }
+  if (t.dataset.remove != null) { S.draft.scores.splice(Number(t.dataset.remove), 1); if (!S.draft.scores.length) S.draft.scores.push(blankScore()); render(); return; }
+  if (t.id === 'read-btn') return readScorecard();
+  if (t.id === 'save-round') return saveRound();
+  if (t.id === 'cancel-edit') { S.draft = newDraft(); S.saveMsg = null; render(); return; }
+  if (t.dataset.edit) {
+    const r = S.rounds.find(x => x.id === t.dataset.edit); if (!r) return;
+    S.draft = { id: r.id, date: r.date, course: r.course || '', scores: (r.scores || []).map(s => ({ player: s.player ?? '', hcp: s.hcp ?? '', gross: s.gross ?? '', points: s.points ?? '' })) };
+    S.saveMsg = null; S.tab = 'add'; render(); return;
+  }
+  if (t.dataset.del) { S.confirmDelete = t.dataset.del; render(); return; }
+  if (t.dataset.delNo != null) { S.confirmDelete = null; render(); return; }
+  if (t.dataset.delYes) {
+    try { await S.db.doc('rounds/' + t.dataset.delYes).delete(); } catch (e) { console.warn(e); }
+    S.confirmDelete = null; render(); return;
+  }
+  if (t.id === 'e-new') {
+    const last = sortedSeasons().slice(-1)[0];
+    S.editSeason = { id: null, name: '', start: last ? addDay(last.end) : today(), end: '', plannedRounds: 8, bestOf: 5 }; render(); return;
+  }
+  if (t.dataset.eseason) { const s = S.seasons.find(x => x.id === t.dataset.eseason); S.editSeason = { ...s }; S.confirmDelete = null; render(); return; }
+  if (t.id === 'e-cancel') { S.editSeason = null; S.confirmDelete = null; render(); return; }
+  if (t.id === 'e-save') return saveSeason();
+  if (t.id === 'e-del') { S.confirmDelete = 'season:' + S.editSeason.id; render(); return; }
+  if (t.id === 'e-del-yes') {
+    try { await S.db.doc('seasons/' + S.editSeason.id).delete(); } catch (e) { $('#e-msg').textContent = 'Could not remove it.'; return; }
+    S.editSeason = null; S.confirmDelete = null; render(); return;
+  }
+});
+
+document.addEventListener('input', ev => {
+  const el = ev.target;
+  if (el.dataset.k) { S.draft.scores[Number(el.dataset.i)][el.dataset.k] = el.value; return; }
+  if (el.id === 'f-course') { S.draft.course = el.value; return; }
+  if (el.id === 'e-name' || el.id === 'e-start' || el.id === 'e-end' || el.id === 'e-planned' || el.id === 'e-best') {
+    const k = { 'e-name': 'name', 'e-start': 'start', 'e-end': 'end', 'e-planned': 'plannedRounds', 'e-best': 'bestOf' }[el.id];
+    S.editSeason[k] = el.value;
+  }
+});
+document.addEventListener('change', ev => {
+  const el = ev.target;
+  if (el.id === 'f-date') { S.draft.date = el.value; render(); }
+  if (el.id === 'photo-input') addPhotos(el.files);
+});
+document.addEventListener('dragover', ev => { const d = ev.target.closest?.('#drop'); if (d) { ev.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', ev => { const d = ev.target.closest?.('#drop'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', ev => { const d = ev.target.closest?.('#drop'); if (d) { ev.preventDefault(); addPhotos(ev.dataTransfer.files); } });
+
+function focus(sel) { requestAnimationFrame(() => $(sel)?.focus()); }
+function addDay(d) { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + 1); return x.toISOString().slice(0, 10); }
+
+function addPhotos(files) {
+  const imgs = [...(files || [])].filter(f => f.type.startsWith('image/'));
+  if (!imgs.length) return;
+  S.photos.forEach(p => URL.revokeObjectURL(p.url));
+  S.photos = imgs.slice(0, 4).map(f => ({ file: f, url: URL.createObjectURL(f) }));
+  S.readMsg = null; render();
+}
+
+/* ---------- Claude reads the scorecard ---------- */
+async function readScorecard() {
+  if (!S.sample || !S.photos.length) return;
+  S.reading = true; S.readMsg = { kind: '', text: 'Reading the scorecard. This can take up to a minute.' }; render();
+  const players = knownPlayers();
+  const prompt = `The attached photo(s) show a golf scorecard from a Trackman indoor simulator round (it may be a photo of a screen or a printout, possibly at an angle).
+Extract the round result for every player on the card.
+
+For each player give:
+- "player": the name as written. ${players.length ? `If it clearly matches one of these league members, use their spelling exactly: ${players.join(', ')}.` : ''}
+- "hcp": playing/course handicap if shown, else null.
+- "gross": total gross strokes for the round (the TOTAL/OUT+IN sum, not net), else null.
+- "points": total Stableford points if shown. If per-hole Stableford points are shown but no total, add them up. If no Stableford figures are visible, null. Do not invent points from gross.
+
+Also give "course" (course name if visible, else "") and "date" (YYYY-MM-DD if visible, else "").
+List any figure you were unsure about in "uncertain" (short strings).
+
+Reply with only JSON like:
+{"course":"Pebble Beach","date":"","players":[{"player":"Jon","hcp":12,"gross":84,"points":35}],"uncertain":["Anna's gross could be 88 or 89"]}`;
+  try {
+    const res = await S.sample.json(prompt, { images: S.photos.map(p => p.file) });
+    const ps = Array.isArray(res?.players) ? res.players : [];
+    if (!ps.length) throw { code: 'empty' };
+    const clean = v => (v === null || v === undefined || v === '') ? '' : String(v);
+    S.draft.scores = ps.map(p => ({ player: String(p.player ?? '').trim(), hcp: clean(p.hcp), gross: clean(p.gross), points: clean(p.points) }));
+    if (res.course && !S.draft.course) S.draft.course = String(res.course);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(res.date || '')) S.draft.date = res.date;
+    const unsure = Array.isArray(res.uncertain) && res.uncertain.length ? ' Check: ' + res.uncertain.join('; ') + '.' : '';
+    const missing = S.draft.scores.some(s => s.points === '') ? ' Some Stableford points were missing on the card; fill them in.' : '';
+    S.readMsg = { kind: unsure || missing ? 'warn' : 'ok', text: `Found ${ps.length} player${ps.length === 1 ? '' : 's'}. Check every number against the card before saving.${unsure}${missing}` };
+  } catch (e) {
+    const code = e?.code;
+    S.readMsg = { kind: 'warn', text:
+      code === 'not_granted' || code === 'sampling_disabled' ? 'Claude was not allowed to read photos here. Enter the scores by hand.'
+      : code === 'rate_limited' ? 'Too many requests right now. Try again in a few minutes.'
+      : code === 'image_rejected' ? 'That photo could not be read. Try a JPEG or PNG, under 20 MB.'
+      : code === 'empty' || code === 'invalid_json' ? 'No scores could be read from that photo. Try a sharper, straight-on photo, or type them in.'
+      : 'Reading failed. Try again, or enter the scores by hand.' };
+    if (code === 'not_granted' || code === 'sampling_disabled' || code === 'images_unavailable') S.imagesOK = false;
+  }
+  S.reading = false; render();
+}
+
+/* ---------- saving ---------- */
+async function saveRound() {
+  const d = S.draft;
+  const scores = d.scores
+    .map(s => ({ player: s.player.trim(), hcp: num(s.hcp), gross: num(s.gross), points: num(s.points) }))
+    .filter(s => s.player);
+  const fail = text => { S.saveMsg = { kind: 'warn', text }; render(); };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return fail('Pick the date of the round.');
+  if (!scores.length) return fail('Add at least one player.');
+  const names = scores.map(s => s.player.toLowerCase());
+  if (new Set(names).size !== names.length) return fail('A player is listed twice.');
+  if (scores.some(s => s.points == null && s.gross == null)) return fail('Every player needs points or a gross score.');
+  // Snap names to existing spelling so "jon" and "Jon" stay one player.
+  const known = new Map(knownPlayers().map(n => [n.toLowerCase(), n]));
+  scores.forEach(s => { s.player = known.get(s.player.toLowerCase()) || s.player; });
+  const body = { date: d.date, course: d.course.trim(), scores, updatedAt: new Date().toISOString() };
+  try {
+    if (d.id) await S.db.doc('rounds/' + d.id).set({ ...(S.rounds.find(r => r.id === d.id)?.createdAt ? { createdAt: S.rounds.find(r => r.id === d.id).createdAt } : {}), ...body });
+    else await S.db.collection('rounds').add({ ...body, createdAt: body.updatedAt });
+  } catch (e) {
+    if (e?.code === 'invalid_argument') { S.canWrite = false; return fail('You have view-only access, so the round was not saved.'); }
+    return fail('Could not save. Check your connection and try again.');
+  }
+  const season = seasonForDate(S.seasons, d.date);
+  S.photos.forEach(p => URL.revokeObjectURL(p.url));
+  S.photos = []; S.readMsg = null; S.draft = newDraft();
+  S.saveMsg = { kind: 'ok', text: 'Round saved.' };
+  if (season) { S.seasonId = season.id; S.tab = 'standings'; }
+  render();
+}
+
+async function saveSeason() {
+  const e = S.editSeason;
+  const msg = t => { $('#e-msg').textContent = t; };
+  const body = { name: String(e.name).trim(), start: e.start, end: e.end, plannedRounds: Number(e.plannedRounds) || null, bestOf: Number(e.bestOf) };
+  if (!body.name) return msg('Give it a name.');
+  if (!body.start || !body.end || body.end < body.start) return msg('Check the dates.');
+  if (!(body.bestOf >= 1)) return msg('Counting rounds must be at least 1.');
+  if (body.plannedRounds && body.bestOf > body.plannedRounds) return msg('Counting rounds cannot exceed planned rounds.');
+  const clash = S.seasons.find(s => s.id !== e.id && s.start <= body.end && body.start <= s.end);
+  if (clash) return msg(`Dates overlap ${clash.name}.`);
+  try {
+    if (e.id) await S.db.doc('seasons/' + e.id).set(body);
+    else { const ref = await S.db.collection('seasons').add(body); S.seasonId = ref.id; }
+  } catch (err) { return msg(err?.code === 'invalid_argument' ? 'Only the league organiser can change competitions.' : 'Could not save.'); }
+  S.editSeason = null; render();
+}
+
+/* ---------- boot ---------- */
+render();
+(async () => {
+  const c = window.claude;
+  if (!c?.use) { S.dbState = 'off'; render(); return; }
+  const [db, user, sample] = await Promise.all([c.use('db'), c.use('user'), c.use('sample')]);
+  if (!db) { S.dbState = 'off'; render(); return; }
+  S.db = db; S.user = user; S.sample = sample; S.dbState = 'ready';
+  if (sample) { try { S.imagesOK = !!(await sample.limits())?.images; } catch { S.imagesOK = false; } }
+  if (user) {
+    try { const w = await user.can('data.write'); if (w === false) S.canWrite = false; } catch {}
+    try { S.canEdit = await user.canEdit(); } catch {}
+  }
+  render();
+  db.collection('seasons').onSnapshot(snap => {
+    S.seasons = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(s => s.start && s.end);
+    S.seasonsLoaded = true;
+    if (!S.seasons.some(s => s.id === S.seasonId)) S.seasonId = pickDefaultSeason();
+    renderKeepFocus();
+  }, e => console.warn('seasons', e));
+  db.collection('rounds').onSnapshot(snap => {
+    S.rounds = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.date);
+    S.roundsLoaded = true;
+    renderKeepFocus();
+  }, e => console.warn('rounds', e));
+})();
+
+// Live updates shouldn't yank the cursor out of a field someone is typing in.
+function renderKeepFocus() {
+  const a = document.activeElement;
+  const id = a && a.id, pos = a && 'selectionStart' in a ? a.selectionStart : null;
+  if (id && (S.tab === 'add' || S.editSeason) && a.matches('input')) {
+    renderSeasons();
+    if (S.tab !== 'add') return;
+    // Only refresh the parts that don't hold typed input.
+    const dl = $('#players'); if (dl) dl.innerHTML = knownPlayers().map(p => `<option value="${esc(p)}">`).join('');
+    return;
+  }
+  render();
+  if (id) { const el = document.getElementById(id); if (el) { el.focus(); try { if (pos != null) el.setSelectionRange(pos, pos); } catch {} } }
+}
+</script>
