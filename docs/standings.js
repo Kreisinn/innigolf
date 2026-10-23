@@ -3,16 +3,21 @@ function seasonForDate(seasons, date) {
   return seasons.find(s => s.start <= date && date <= s.end) || null;
 }
 
-function computeStandings(season, rounds, metric) {
+// opts.keyOf(score) groups scores by player (default: name, case-insensitive);
+// opts.nameOf(score) is the name shown. Scores marked guest never count.
+function computeStandings(season, rounds, metric, opts = {}) {
+  const keyOf = opts.keyOf || (s => String(s.player || '').trim().toLowerCase());
+  const nameOf = opts.nameOf || (s => String(s.player || '').trim());
   const y = Math.max(1, Number(season.bestOf) || 1);
   const inSeason = rounds.filter(r => r.date >= season.start && r.date <= season.end);
   const byPlayer = new Map();
   for (const r of inSeason) {
     for (const s of r.scores || []) {
-      const name = String(s.player || '').trim();
-      if (!name) continue;
-      const key = name.toLowerCase();
-      if (!byPlayer.has(key)) byPlayer.set(key, { name, entries: [] });
+      if (s.guest) continue;
+      const key = keyOf(s);
+      const name = nameOf(s);
+      if (!key || !name) continue;
+      if (!byPlayer.has(key)) byPlayer.set(key, { key, name, entries: [] });
       byPlayer.get(key).entries.push({
         roundId: r.id, date: r.date,
         points: num(s.points), gross: num(s.gross),
@@ -29,6 +34,7 @@ function computeStandings(season, rounds, metric) {
     const countingIds = new Set(counting.map(e => e.roundId));
     const total = counting.reduce((t, e) => t + e[metric], 0);
     rows.push({
+      key: p.key,
       name: p.name,
       played: p.entries.length,
       entries: p.entries.map(e => ({ ...e, counts: countingIds.has(e.roundId) })),
@@ -69,4 +75,16 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-if (typeof module !== 'undefined') module.exports = { computeStandings, seasonForDate };
+// Trackman names are compared ignoring case, spacing and a trailing "..." (long names get cut off).
+function normCardName(v) {
+  return String(v ?? '').replace(/(\.\.\.|…)\s*$/, '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+// The active event: the earliest one on or after today (dates as YYYY-MM-DD).
+function nextEvent(events, today) {
+  return events
+    .filter(e => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || String(a.time || '').localeCompare(String(b.time || '')))[0] || null;
+}
+
+if (typeof module !== 'undefined') module.exports = { computeStandings, seasonForDate, normCardName, nextEvent };

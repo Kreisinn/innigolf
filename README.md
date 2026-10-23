@@ -21,8 +21,10 @@ Try it without any setup: open `docs/index.html?demo` (or `https://<you>.github.
    | Christmas 2026 | 16 Dec – 15 Jan | 4 | 3 |
    | Spring 2027 | 16 Jan – 30 Apr | 15 | 10 |
 
-   You can change these later on the page's **Competitions** tab.
-3. Open **Table Editor → members** and add a row for each player: their **email** and **name**. Tick **is_admin** for yourself (and anyone else who should manage competitions).
+   You can change these later on the page's **League** tab.
+
+   Then do the same with each file in [`supabase/migrations/`](supabase/migrations), oldest first. They add the player register, league nights and attendance.
+3. Open **Table Editor → members** and add one row for yourself: your **email** and **name**, with **is_admin** ticked. Everyone else you register from the site (League → Register a player) once you're signed in.
 4. Open **Project Settings → API** (or **Data API**) and copy the **Project URL** and the **anon / publishable** key.
 
 ### 2. Put the page on GitHub Pages
@@ -79,18 +81,21 @@ The function checks that the caller is signed in and on the members list before 
 ## Running the league
 
 - **After a round:** open the site, **Add round**, choose the photo, **Read scorecard**, check the numbers, **Save round**. Anyone on the list can also edit or delete a round from the **Rounds** tab.
-- **New player:** add their email in Supabase **Table Editor → members**.
-- **Names:** a player is matched by name, so keep spellings consistent ("Jon" and "jon" count as one player; "Jón" and "Jon" count as two). The name box suggests names already used.
+- **Start page:** the site opens on **Next round**, the next league night on or after today. Players tap **I'm coming** or **Can't make it**; tapping again clears the answer. Organisers can set anyone's answer with the ✓ / ✕ buttons.
+- **League nights:** League → **Add league nights**. Fill in a date, time and place, and optionally **Repeat weekly until** to add the whole series at once.
+- **Players:** League → **Register a player**. Give each player a name, the **Trackman IDs** they appear under on scorecards (e.g. `KIDDIEIKA66`), and their email if they should sign in to answer and add rounds. Tick **Organiser** for anyone who should manage players, nights and competitions.
+- **Matching scorecards:** each name on a scorecard is matched to a player by Trackman ID (ignoring case), or by name. A long name the card cuts off with "..." still matches if only one player's name or ID starts that way. When a name isn't recognised, the person adding the round picks the player and the ID is remembered for next time. Older rounds with unknown names show up under League → **Scorecard names to link**. A score marked **Guest** is saved but never counts in the standings.
 - **Ranking:** Stableford is ranked on the total of each player's best y rounds in that competition. Ties go to the better best counting round, then the next best. The Gross view ranks the lowest average gross over the best y rounds.
-- **Next winter:** add new competitions on the Competitions tab; old ones stay viewable.
+- **Next winter:** add new competitions on the League tab; old ones stay viewable.
 
 ## Files
 
 | Path | What it is |
 |---|---|
 | `docs/index.html` | The website |
-| `docs/standings.js` | The ranking rules (best y of x, tie-breaks) |
+| `docs/standings.js` | The ranking rules (best y of x, tie-breaks), scorecard-name matching and the next-event rule |
 | `docs/config.js` | Your Supabase URL and public key |
 | `supabase/schema.sql` | Tables, access rules and the three competitions |
+| `supabase/migrations/` | Later database updates: the player register, league nights and attendance |
 | `supabase/functions/read-scorecard/` | The Claude photo reader |
 | `claude-artifact/` | The earlier claude.ai version, kept for reference |

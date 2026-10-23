@@ -31,17 +31,16 @@ Deno.serve(async (req) => {
   const { data: isMember, error: memberErr } = await supabase.rpc("is_member");
   if (memberErr || !isMember) return reply(403, { error: "Only league members can read scorecards." });
 
-  let body: { images?: { media_type: string; data: string }[]; players?: string[] };
+  let body: { images?: { media_type: string; data: string }[] };
   try { body = await req.json(); } catch { return reply(400, { error: "Send JSON." }); }
   const images = (body.images ?? []).filter((i) => MEDIA_TYPES.includes(i?.media_type) && typeof i?.data === "string");
   if (!images.length) return reply(400, { error: "No photo received." });
   if (images.length > MAX_IMAGES) return reply(400, { error: `At most ${MAX_IMAGES} photos at a time.` });
-  const players = (body.players ?? []).filter((p) => typeof p === "string").slice(0, 200);
 
   const prompt = `The photo(s) show the scorecard from one round of indoor golf on a Trackman simulator. It may be a photo of a screen or a printout, possibly at an angle or with glare.
 
 Read the result for every player on the card:
-- "player": the name as written.${players.length ? ` If it clearly refers to one of these league members, use their spelling exactly: ${players.join(", ")}.` : ""}
+- "player": the player name or Trackman ID exactly as printed on the card, including any "..." where a long name is cut off. Do not correct, expand or translate it; the league matches these IDs to its players.
 - "hcp": the playing or course handicap if shown, else null.
 - "gross": total gross strokes for the round (the total, not net), else null.
 - "points": total Stableford points if shown. If only per-hole Stableford points are shown, add them up. If no Stableford figures are visible, use null; do not work points out from strokes.

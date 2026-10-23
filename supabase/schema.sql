@@ -1,5 +1,6 @@
 -- Trackman Winter League: database setup.
 -- Paste this whole file into Supabase > SQL Editor and click Run. Safe to run again.
+-- Then do the same with each file in supabase/migrations/, oldest first.
 
 -- Who may add rounds. Add one row per player (their sign-in email).
 -- is_admin = may create and edit competitions.
@@ -43,6 +44,12 @@ create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from members where lower(email) = lower(auth.jwt() ->> 'email') and is_admin)
 $$;
+
+-- Only signed-in users may call the helpers directly.
+revoke execute on function public.is_member() from public, anon;
+revoke execute on function public.is_admin() from public, anon;
+grant execute on function public.is_member() to authenticated;
+grant execute on function public.is_admin() to authenticated;
 
 alter table public.members enable row level security;
 alter table public.seasons enable row level security;

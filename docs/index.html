@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap">
 <style>
-/* Layout: one column, scorecard-like tables; season chips on top, tabs below. */
+/* Layout: one column; the next league night first, scorecard-like tables after. */
 :root {
   --bg: #eef2ee;
   --surface: #ffffff;
@@ -19,14 +19,16 @@
   --turf-ink: #ffffff;
   --turf-soft: #d5ebdd;
   --flag: #c4432c;
+  --flag-soft: #f6dcd6;
   --gold: #b88a16;
   --display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root {
   --bg: #0e1511; --surface: #16201a; --sunk: #1d2a22; --ink: #e4ece6; --muted: #93a49a;
-  --line: #2c3b32; --turf: #47b97d; --turf-ink: #07130c; --turf-soft: #1f3d2b; --flag: #ef7a62; --gold: #e0b443;
+  --line: #2c3b32; --turf: #47b97d; --turf-ink: #07130c; --turf-soft: #1f3d2b; --flag: #ef7a62; --flag-soft: #3d221c; --gold: #e0b443;
   color-scheme: dark; } }
 
 * { box-sizing: border-box; }
@@ -41,6 +43,7 @@ header { display: flex; flex-wrap: wrap; align-items: end; justify-content: spac
 h1 { font: 700 2.3rem/1 var(--display); letter-spacing: .01em; margin: 0; text-transform: uppercase; }
 h1 small { display: block; font: 500 .95rem/1.4 var(--body); text-transform: none; color: var(--muted); letter-spacing: 0; margin-top: 6px; }
 h2 { font: 600 1.35rem/1.2 var(--display); text-transform: uppercase; letter-spacing: .03em; margin: 0; text-wrap: balance; }
+h3 { font: 600 1rem/1.2 var(--body); margin: 0; }
 .label { font: 600 .75rem/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .muted { color: var(--muted); }
 .num { font-variant-numeric: tabular-nums; }
@@ -59,8 +62,10 @@ nav.tabs button { background: none; border: 0; padding: 10px 14px; font: 600 1.0
   letter-spacing: .05em; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
 nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--turf); }
 
+.stack { display: grid; gap: 14px; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.row.start { justify-content: start; }
 .facts { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .facts div { display: grid; gap: 4px; }
 .facts b { font: 600 1.4rem/1 var(--display); }
@@ -83,7 +88,36 @@ td.total { font: 700 1.5rem/1 var(--display); text-align: right; }
 .cards { display: flex; flex-wrap: wrap; gap: 4px; }
 .sc { min-width: 2.1em; text-align: center; padding: 3px 5px; border-radius: 4px; font: 600 .85rem/1.1 var(--body); background: var(--sunk); color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
 .sc.counts { background: var(--turf-soft); color: var(--ink); text-decoration: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--turf) 45%, transparent); }
-.pill { display: inline-block; font: 600 .7rem/1 var(--body); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); }
+.pill { display: inline-block; font: 600 .7rem/1 var(--body); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.pill.yes { background: var(--turf-soft); color: var(--turf); }
+.pill.no { background: var(--flag-soft); color: var(--flag); }
+.tm { font: 600 .78rem/1 var(--mono); padding: 4px 6px; border-radius: 4px; background: var(--sunk); color: var(--ink); white-space: nowrap; }
+.tms { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Next round */
+.hero { display: grid; gap: 6px; }
+.hero .date { font: 700 clamp(2.1rem, 7vw, 3.4rem)/.95 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.hero .when { font-size: 1.05rem; color: var(--muted); }
+.hero .when b { color: var(--ink); font-weight: 600; }
+.soon { display: inline-block; font: 600 .78rem/1 var(--body); text-transform: uppercase; letter-spacing: .08em; padding: 5px 8px; border-radius: 4px; background: var(--flag); color: var(--turf-ink); justify-self: start; }
+.rsvp { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.rsvp .btn { padding: 12px 18px; font-size: 1.02rem; }
+.rsvp .btn.yes[aria-pressed="true"] { background: var(--turf); border-color: var(--turf); color: var(--turf-ink); }
+.rsvp .btn.no[aria-pressed="true"] { background: var(--flag); border-color: var(--flag); color: var(--turf-ink); }
+.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+.roster section { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.roster h3 { display: flex; align-items: baseline; gap: 8px; }
+.roster h3 b { font: 700 1.5rem/1 var(--display); }
+.roster ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.roster li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: var(--bg); min-height: 38px; }
+.roster li.me { box-shadow: inset 0 0 0 1px var(--turf); }
+.roster .set { display: inline-flex; gap: 4px; }
+.roster .set button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 5px; width: 30px; height: 28px; cursor: pointer; font: 600 .85rem/1 var(--body); }
+.roster .set button.y:hover, .roster .set button.y[aria-pressed="true"] { color: var(--turf); border-color: var(--turf); }
+.roster .set button.n:hover, .roster .set button.n[aria-pressed="true"] { color: var(--flag); border-color: var(--flag); }
+.later { display: grid; gap: 0; }
+.later > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+.later > div:last-child { border-bottom: 0; }
 
 .round { display: grid; gap: 8px; padding-block: 12px; border-bottom: 1px solid var(--line); }
 .round:last-child { border-bottom: 0; }
@@ -91,8 +125,10 @@ td.total { font: 700 1.5rem/1 var(--display); text-align: right; }
 .round .who span b { font-variant-numeric: tabular-nums; }
 
 label.f { display: grid; gap: 5px; font: 600 .78rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-input, select { font: 16px/1.3 var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; width: 100%; }
-input:focus-visible, select:focus-visible, button:focus-visible, label.btn:focus-within { outline: 2px solid var(--turf); outline-offset: 2px; }
+label.check { display: inline-flex; gap: 8px; align-items: center; font-size: .95rem; cursor: pointer; }
+label.check input { width: auto; }
+input, select, textarea { font: 16px/1.3 var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; width: 100%; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, label.btn:focus-within { outline: 2px solid var(--turf); outline-offset: 2px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 9px 14px; font: 600 .95rem/1 var(--body); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .btn.primary { background: var(--turf); border-color: var(--turf); color: var(--turf-ink); }
@@ -104,8 +140,11 @@ input:focus-visible, select:focus-visible, button:focus-visible, label.btn:focus
 .thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
 .thumbs img { width: 92px; height: 92px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
 .entry td { padding: 6px 4px; }
-.entry input { padding: 6px 8px; }
+.entry input, .entry select { padding: 6px 8px; }
 .entry td.n input { width: 5.2em; text-align: right; }
+.entry td.card input { font-family: var(--mono); font-size: 14px; min-width: 9em; }
+.entry select { min-width: 10em; }
+.entry select.unset { border-color: var(--flag); }
 .note { padding: 10px 12px; border-radius: 8px; background: var(--sunk); font-size: .93rem; }
 .note.warn { background: color-mix(in srgb, var(--flag) 14%, var(--surface)); }
 .note.ok { background: var(--turf-soft); }
@@ -113,6 +152,7 @@ input:focus-visible, select:focus-visible, button:focus-visible, label.btn:focus
 .signin { display: flex; flex-wrap: wrap; gap: 8px; max-width: 460px; width: 100%; }
 .signin input { flex: 1 1 220px; }
 .rules { font-size: .92rem; color: var(--muted); max-width: 65ch; margin: 0; }
+details > summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .chip, .btn, nav.tabs button { transition: background .15s, color .15s, border-color .15s; } }
 @media (max-width: 560px) { .hide-sm { display: none; } h1 { font-size: 1.9rem; } }
 </style>
@@ -123,13 +163,14 @@ input:focus-visible, select:focus-visible, button:focus-visible, label.btn:focus
     <h1>Trackman Winter League<small>Stableford standings, best rounds count</small></h1>
     <div class="account" id="account"></div>
   </header>
-  <div class="seasons" id="seasons" role="group" aria-label="Competition"></div>
   <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="next" id="tab-next">Next round</button>
     <button role="tab" data-tab="standings" id="tab-standings">Standings</button>
     <button role="tab" data-tab="add" id="tab-add">Add round</button>
     <button role="tab" data-tab="rounds" id="tab-rounds">Rounds</button>
-    <button role="tab" data-tab="settings" id="tab-settings">Competitions</button>
+    <button role="tab" data-tab="league" id="tab-league">League</button>
   </nav>
+  <div class="seasons" id="seasons" role="group" aria-label="Competition"></div>
   <main id="main"></main>
 </div>
 
@@ -142,14 +183,17 @@ const DEMO = new URLSearchParams(location.search).has('demo');
 
 const S = {
   sb: null, mode: 'loading', // loading | ready | setup | error
-  session: null, member: null, // member = {email, name, is_admin} when on the list
-  seasons: [], rounds: [], loaded: false,
-  seasonId: null, tab: 'standings', metric: 'points',
+  session: null, member: null, // member = {email, name, is_admin, player_id} when on the list
+  seasons: [], rounds: [], players: [], events: [], attendance: [], accounts: [],
+  register: false, // true once the players/events tables exist
+  loaded: false, seasonId: null, tab: 'next', metric: 'points',
   draft: null, photos: [], reading: false, readMsg: null, saveMsg: null,
-  confirmDelete: null, editSeason: null, signinMsg: null, signinBusy: false,
+  confirmDelete: null, editSeason: null, editPlayer: null, editEvent: null,
+  signinMsg: null, signinBusy: false, busy: false, flash: null,
 };
 const canWrite = () => DEMO || !!S.member;
 const canEdit = () => DEMO || !!S.member?.is_admin;
+const myPlayerId = () => DEMO ? S.players[0]?.id : S.member?.player_id || null;
 const photoOn = () => !DEMO && CFG.photoReading !== false;
 
 const $ = s => document.querySelector(s);
@@ -157,11 +201,13 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch { return d; } };
 const fmtDateLong = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); } catch { return d; } };
-
-try { const t = localStorage.getItem('twl-tab'); if (t) S.tab = t; } catch {}
+const fmtDay = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }); } catch { return d; } };
+const fmtTime = t => t ? String(t).slice(0, 5) : '';
+const daysUntil = d => Math.round((new Date(d + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 86400000);
+const addDays = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
 
 function newDraft() { return { id: null, date: today(), course: '', scores: [blankScore(), blankScore(), blankScore(), blankScore()] }; }
-function blankScore() { return { player: '', hcp: '', gross: '', points: '' }; }
+function blankScore() { return { card: '', pick: '', hcp: '', gross: '', points: '' }; }
 S.draft = newDraft();
 
 /* ---------- data: Supabase rows <-> page objects ---------- */
@@ -169,16 +215,27 @@ const fromSeason = r => ({ id: r.id, name: r.name, start: r.start_date, end: r.e
 const toSeason = s => ({ name: s.name, start_date: s.start, end_date: s.end, planned_rounds: s.plannedRounds, best_of: s.bestOf });
 const fromRound = r => ({ id: r.id, date: r.played_on, course: r.course, scores: r.scores || [], createdBy: r.created_by });
 const toRound = r => ({ played_on: r.date, course: r.course, scores: r.scores, updated_at: new Date().toISOString() });
+const fromPlayer = r => ({ id: r.id, name: r.name, ids: r.trackman_ids || [], active: r.active });
+const fromEvent = r => ({ id: r.id, date: r.event_date, time: r.start_time, location: r.location, notes: r.notes });
+const toEvent = e => ({ event_date: e.date, start_time: e.time || null, location: e.location, notes: e.notes });
 
 async function loadAll() {
   if (DEMO) { S.loaded = true; afterLoad(); return; }
-  const [se, ro] = await Promise.all([
+  const [se, ro, pl, ev, at] = await Promise.all([
     S.sb.from('seasons').select('*').order('start_date'),
     S.sb.from('rounds').select('*').order('played_on', { ascending: false }),
+    S.sb.from('players').select('*').order('name'),
+    S.sb.from('events').select('*').gte('event_date', addDays(today(), -120)).order('event_date'),
+    S.sb.from('attendance').select('event_id,player_id,status'),
   ]);
   if (se.error || ro.error) { console.error(se.error || ro.error); S.mode = 'error'; render(); return; }
   S.seasons = se.data.map(fromSeason);
   S.rounds = ro.data.map(fromRound);
+  // The register tables arrive with a database update; until then the page works as before.
+  S.register = !pl.error && !ev.error && !at.error;
+  S.players = S.register ? pl.data.map(fromPlayer) : [];
+  S.events = S.register ? ev.data.map(fromEvent) : [];
+  S.attendance = S.register ? at.data : [];
   S.loaded = true;
   afterLoad();
 }
@@ -188,14 +245,69 @@ function afterLoad() {
 }
 
 async function loadMember() {
-  S.member = null;
+  S.member = null; S.accounts = [];
   const email = S.session?.user?.email;
   if (email) {
-    const { data, error } = await S.sb.from('members').select('email,name,is_admin').ilike('email', email).maybeSingle();
+    const { data, error } = await S.sb.from('members').select('*').ilike('email', email).maybeSingle();
     if (!error && data) S.member = data;
+    if (S.member?.is_admin) await loadAccounts();
   }
   render();
 }
+async function loadAccounts() {
+  if (DEMO || !S.member?.is_admin) return;
+  const { data, error } = await S.sb.from('members').select('*').order('email');
+  S.accounts = error ? [] : data;
+}
+
+/* ---------- players and scorecard names ---------- */
+function playerById(id) { return S.players.find(p => p.id === id) || null; }
+function aliasIndex() {
+  const m = new Map();
+  for (const p of S.players) {
+    for (const t of p.ids) m.set(normCardName(t), p);
+    if (!m.has(normCardName(p.name))) m.set(normCardName(p.name), p);
+  }
+  return m;
+}
+// The registered player behind a scorecard name: an exact Trackman ID or name match, or,
+// for a name the card cut off with "...", the one player whose name or ID starts that way.
+function findPlayer(raw, idx = aliasIndex()) {
+  const key = normCardName(raw);
+  if (!key) return null;
+  if (idx.has(key)) return idx.get(key);
+  if (!/(\.\.\.|…)\s*$/.test(String(raw))) return null;
+  const hits = new Set();
+  for (const [k, p] of idx) if (k.startsWith(key)) hits.add(p);
+  return hits.size === 1 ? [...hits][0] : null;
+}
+// Which registered player a saved score belongs to: its stored id, else its scorecard name.
+function playerForScore(s, idx = aliasIndex()) {
+  if (s.player_id) return playerById(s.player_id);
+  return findPlayer(s.card_name || s.player, idx);
+}
+function standingsOpts() {
+  const idx = aliasIndex();
+  return {
+    keyOf: s => { const p = playerForScore(s, idx); return p ? 'id:' + p.id : 'card:' + normCardName(s.card_name || s.player); },
+    nameOf: s => playerForScore(s, idx)?.name || String(s.card_name || s.player || '').trim(),
+  };
+}
+function unmatchedCardNames() {
+  const idx = aliasIndex(), m = new Map();
+  for (const r of S.rounds) for (const s of r.scores || []) {
+    if (s.guest || playerForScore(s, idx)) continue;
+    const raw = String(s.card_name || s.player || '').trim(); if (!raw) continue;
+    const k = normCardName(raw);
+    const e = m.get(k) || { name: raw, count: 0 }; e.count++; m.set(k, e);
+  }
+  return [...m.values()].sort((a, b) => b.count - a.count);
+}
+const activePlayers = () => S.players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name));
+
+/* ---------- events ---------- */
+const activeEvent = () => nextEvent(S.events, today());
+const answerOf = (eventId, playerId) => S.attendance.find(a => a.event_id === eventId && a.player_id === playerId)?.status || null;
 
 /* ---------- helpers ---------- */
 function sortedSeasons() { return [...S.seasons].sort((a, b) => a.start.localeCompare(b.start)); }
@@ -206,34 +318,26 @@ function pickDefaultSeason() {
   const t = today();
   return (list.find(s => s.start <= t && t <= s.end) || list.find(s => s.start > t) || list[list.length - 1]).id;
 }
-function knownPlayers() {
-  const m = new Map();
-  for (const r of S.rounds) for (const s of r.scores || []) {
-    const n = String(s.player || '').trim(); if (n && !m.has(n.toLowerCase())) m.set(n.toLowerCase(), n);
-  }
-  return [...m.values()].sort((a, b) => a.localeCompare(b));
-}
 
 /* ---------- render ---------- */
 function render() {
   renderAccount();
+  $('#seasons').hidden = !['standings', 'rounds'].includes(S.tab);
   renderSeasons();
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
   const m = $('#main');
   if (S.mode === 'setup') { m.innerHTML = `<div class="panel empty"><h2>Almost there</h2><p>This page isn't connected to its database yet. Fill in <b>config.js</b> with your Supabase project's URL and key (see the README), or <a href="?demo">look at the demo</a>.</p></div>`; return; }
   if (S.mode === 'error') { m.innerHTML = `<div class="panel empty"><h2>Couldn't load the league</h2><p>Check your connection and reload. If it keeps happening, check the Supabase URL and key in config.js.</p></div>`; return; }
-  if (S.tab === 'standings') m.innerHTML = viewStandings();
-  else if (S.tab === 'add') m.innerHTML = viewAdd();
-  else if (S.tab === 'rounds') m.innerHTML = viewRounds();
-  else m.innerHTML = viewSettings();
+  const view = { next: viewNext, standings: viewStandings, add: viewAdd, rounds: viewRounds, league: viewLeague }[S.tab] || viewNext;
+  m.innerHTML = view();
 }
 
 function renderAccount() {
   const a = $('#account');
   if (DEMO) { a.innerHTML = '<span class="pill">Demo with example data. Nothing is saved.</span>'; return; }
   if (S.mode !== 'ready') { a.innerHTML = ''; return; }
-  if (!S.session) { a.innerHTML = `<button class="btn small" data-go="add">Sign in to add rounds</button>`; return; }
-  const who = S.member?.name || S.session.user.email;
+  if (!S.session) { a.innerHTML = `<button class="btn small" id="go-signin">Sign in</button>`; return; }
+  const who = playerById(S.member?.player_id)?.name || S.member?.name || S.session.user.email;
   a.innerHTML = `<span class="muted">${esc(who)}${S.member?.is_admin ? ' · organiser' : ''}</span><button class="btn small" id="sign-out">Sign out</button>`;
 }
 
@@ -243,26 +347,86 @@ function renderSeasons() {
   $('#seasons').innerHTML = list.length ? list.map(s => {
     const live = s.start <= t && t <= s.end;
     return `<button class="chip" aria-pressed="${s.id === S.seasonId}" data-season="${esc(s.id)}">${live ? '<span class="live" title="In progress"></span>' : ''}${esc(s.name)}<small>${fmtDate(s.start)} – ${fmtDate(s.end)}</small></button>`;
-  }).join('') : (S.loaded ? '<span class="muted">No competitions yet. Add one under Competitions.</span>' : '');
+  }).join('') : (S.loaded ? '<span class="muted">No competitions yet. Add one under League.</span>' : '');
 }
 
 function signInPanel(reason) {
   if (S.session && !S.member) return `<div class="panel empty"><h2>You're not on the league list yet</h2>
-    <p>You're signed in as <b>${esc(S.session.user.email)}</b>, but that address isn't on the list of players. Ask the organiser to add it, then reload.</p>
+    <p>You're signed in as <b>${esc(S.session.user.email)}</b>, but that address isn't registered. Ask the organiser to add it, then reload.</p>
     <button class="btn" id="sign-out">Use a different email</button></div>`;
   return `<div class="panel empty"><h2>Sign in to ${esc(reason)}</h2>
-    <p>Enter the email the organiser added to the league. We'll email you a sign-in link. No password needed.</p>
-    <form class="signin" id="signin-form">
+    <p>Enter the email the organiser registered for you. We'll email you a sign-in link. No password needed.</p>
+    ${signInForm()}</div>`;
+}
+function signInForm() {
+  return `<form class="signin" id="signin-form">
       <input id="signin-email" type="email" autocomplete="email" placeholder="you@example.com" required>
       <button class="btn primary" ${S.signinBusy ? 'disabled' : ''}>${S.signinBusy ? 'Sending…' : 'Email me a link'}</button>
     </form>
-    ${S.signinMsg ? `<div class="note ${S.signinMsg.kind}">${esc(S.signinMsg.text)}</div>` : ''}</div>`;
+    ${S.signinMsg ? `<div class="note ${S.signinMsg.kind}">${esc(S.signinMsg.text)}</div>` : ''}`;
+}
+const registerMissing = () => `<div class="panel empty"><h2>Database update needed</h2><p>Player registration and events need the update in <b>supabase/migrations/20261023_players_events.sql</b>. Run it in Supabase's SQL Editor, then reload.</p></div>`;
+
+/* ---------- Next round ---------- */
+function viewNext() {
+  if (!S.loaded) return `<div class="panel empty"><p>Loading…</p></div>`;
+  if (!S.register) return registerMissing();
+  const ev = activeEvent();
+  if (!ev) return `<div class="panel empty"><h2>No rounds scheduled</h2><p>${canEdit() ? 'Add the coming league nights under League.' : 'The organiser hasn’t added the next league night yet.'}</p>${canEdit() ? '<button class="btn primary" data-go="league">Add league nights</button>' : ''}</div>`;
+  const d = daysUntil(ev.date);
+  const soon = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
+  const me = myPlayerId();
+  const mine = me ? answerOf(ev.id, me) : null;
+  const players = activePlayers();
+  const yes = players.filter(p => answerOf(ev.id, p.id) === 'yes');
+  const no = players.filter(p => answerOf(ev.id, p.id) === 'no');
+  const none = players.filter(p => !answerOf(ev.id, p.id));
+  let answerBlock;
+  if (me) answerBlock = `<div class="rsvp" role="group" aria-label="Your answer">
+      <button class="btn yes" data-rsvp="yes" data-ev="${esc(ev.id)}" data-pl="${esc(me)}" aria-pressed="${mine === 'yes'}" ${S.busy ? 'disabled' : ''}>${mine === 'yes' ? '✓ ' : ''}I'm coming</button>
+      <button class="btn no" data-rsvp="no" data-ev="${esc(ev.id)}" data-pl="${esc(me)}" aria-pressed="${mine === 'no'}" ${S.busy ? 'disabled' : ''}>${mine === 'no' ? '✕ ' : ''}Can't make it</button>
+      <span class="muted">${mine ? 'Tap again to clear your answer.' : 'Let the others know.'}</span>
+    </div>`;
+  else if (S.session && S.member) answerBlock = `<div class="note">Your sign-in isn't linked to a player yet. Ask the organiser to link it under League.</div>`;
+  else if (S.session) answerBlock = `<div class="note">You're signed in as ${esc(S.session.user.email)}, which isn't registered. Ask the organiser to add it.</div>`;
+  else answerBlock = `<div class="stack"><div class="muted">Sign in to say whether you're coming.</div>${signInForm()}</div>`;
+
+  const list = (arr, status) => arr.length ? `<ul>${arr.map(p => `<li class="${p.id === me ? 'me' : ''}"><span>${esc(p.name)}</span>${canEdit() ? `<span class="set"><button class="y" title="Mark ${esc(p.name)} as coming" aria-label="Mark ${esc(p.name)} as coming" data-rsvp="yes" data-ev="${esc(ev.id)}" data-pl="${esc(p.id)}" aria-pressed="${status === 'yes'}">✓</button><button class="n" title="Mark ${esc(p.name)} as not coming" aria-label="Mark ${esc(p.name)} as not coming" data-rsvp="no" data-ev="${esc(ev.id)}" data-pl="${esc(p.id)}" aria-pressed="${status === 'no'}">✕</button></span>` : ''}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">Nobody yet.</p>';
+
+  const later = S.events.filter(e => e.date >= today() && e.id !== ev.id).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+  return `<div class="stack">
+    <div class="panel">
+      <div class="hero">
+        <span class="soon">${soon}</span>
+        <p class="date">${esc(fmtDay(ev.date))}</p>
+        <div class="when">${ev.time ? `<b>${esc(fmtTime(ev.time))}</b>` : ''}${ev.time && ev.location ? ' · ' : ''}${ev.location ? esc(ev.location) : ''}</div>
+        ${ev.notes ? `<div>${esc(ev.notes)}</div>` : ''}
+      </div>
+      ${answerBlock}
+      ${S.flash ? `<div class="note warn">${esc(S.flash)}</div>` : ''}
+    </div>
+    <div class="panel">
+      <div class="roster">
+        <section><h3><b class="num">${yes.length}</b> Coming</h3>${list(yes, 'yes')}</section>
+        <section><h3><b class="num">${no.length}</b> Not coming</h3>${list(no, 'no')}</section>
+        <section><h3><b class="num">${none.length}</b> No answer yet</h3>${list(none, null)}</section>
+      </div>
+      ${players.length ? '' : `<p class="rules">No players are registered yet.${canEdit() ? ' Add them under League.' : ''}</p>`}
+    </div>
+    ${later.length ? `<div class="panel"><h2>Later rounds</h2><div class="later">${later.map(e => {
+      const n = S.attendance.filter(a => a.event_id === e.id && a.status === 'yes').length;
+      const a = me ? answerOf(e.id, me) : null;
+      return `<div><span><b>${esc(fmtDateLong(e.date))}</b> <span class="muted">${esc([fmtTime(e.time), e.location].filter(Boolean).join(' · '))}</span></span>
+        <span class="row start" style="gap:8px"><span class="muted num">${n} coming</span>${me ? `<span class="rsvp"><button class="btn small yes" data-rsvp="yes" data-ev="${esc(e.id)}" data-pl="${esc(me)}" aria-pressed="${a === 'yes'}">Coming</button><button class="btn small no" data-rsvp="no" data-ev="${esc(e.id)}" data-pl="${esc(me)}" aria-pressed="${a === 'no'}">Can't</button></span>` : ''}</span></div>`;
+    }).join('')}</div></div>` : ''}
+  </div>`;
 }
 
+/* ---------- Standings ---------- */
 function viewStandings() {
   const season = currentSeason();
-  if (!season) return `<div class="panel empty"><h2>No competition selected</h2><p>${S.loaded ? 'Create the autumn, Christmas and spring competitions under Competitions.' : 'Loading…'}</p></div>`;
-  const st = computeStandings(season, S.rounds, S.metric);
+  if (!season) return `<div class="panel empty"><h2>No competition selected</h2><p>${S.loaded ? 'Create the autumn, Christmas and spring competitions under League.' : 'Loading…'}</p></div>`;
+  const st = computeStandings(season, S.rounds, S.metric, standingsOpts());
   const x = Number(season.plannedRounds) || 0;
   const pct = x ? Math.min(100, Math.round(st.roundCount / x * 100)) : 0;
   const head = `
@@ -279,10 +443,11 @@ function viewStandings() {
     </div>
     ${x ? `<div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ''}`;
   if (!st.rows.length) return `<div class="panel">${head}<div class="empty"><h2>No rounds yet</h2><p>Snap the Trackman scorecard after your first round of ${esc(season.name)} and add it here.</p><button class="btn primary" data-go="add">Add a round</button></div></div>`;
+  const unreg = st.rows.some(r => r.key.startsWith('card:')) && S.register;
   const rows = st.rows.map(r => `
     <tr class="${r.rank === 1 ? 'lead' : ''}">
       <td class="rank">${r.rank}</td>
-      <td class="player">${esc(r.name)}${!r.complete && S.metric === 'gross' ? ' <span class="pill">Needs ' + (st.y - r.counting.length) + '</span>' : ''}</td>
+      <td class="player">${esc(r.name)}${S.register && r.key.startsWith('card:') ? ' <span class="pill">Not linked</span>' : ''}${!r.complete && S.metric === 'gross' ? ' <span class="pill">Needs ' + (st.y - r.counting.length) + '</span>' : ''}</td>
       <td><div class="cards">${r.entries.map(e => e[S.metric] == null ? '' : `<span class="sc ${e.counts ? 'counts' : ''}" title="${fmtDateLong(e.date)}${e.counts ? '' : ' (dropped)'}">${e[S.metric]}</span>`).join('')}</div></td>
       <td class="r num hide-sm">${r.played}</td>
       <td class="r num hide-sm">${r.best ?? '–'}</td>
@@ -294,28 +459,36 @@ function viewStandings() {
       <thead><tr><th>#</th><th>Player</th><th>Rounds (counting highlighted)</th><th class="r hide-sm">Played</th><th class="r hide-sm">Best</th><th class="r hide-sm">Avg</th><th class="r">${S.metric === 'points' ? 'Best ' + st.y + ' pts' : 'Best ' + st.y + ' strokes'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
+    ${unreg ? `<div class="note">Names marked <b>Not linked</b> are Trackman IDs that aren't linked to a registered player yet.${canWrite() ? ' <button class="btn small" data-go="league">Link them</button>' : ''}</div>` : ''}
     <p class="rules">${S.metric === 'points'
       ? `Ranked on the total Stableford points of each player's best ${st.y} rounds in ${esc(season.name)}. Ties are split on the best single counting round, then the next best. Struck-through scores are dropped.`
       : `Ranked on the lowest average gross over each player's best ${st.y} rounds. Players with fewer than ${st.y} rounds sit below those with a full set.`}</p>
   </div>`;
 }
 
+/* ---------- Add round ---------- */
+function playerSelect(i, pick) {
+  const opts = activePlayers().map(p => `<option value="${esc(p.id)}" ${pick === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  return `<select id="s-${i}-pick" data-i="${i}" data-k="pick" class="${pick ? '' : 'unset'}" aria-label="Who is this">
+    <option value="" ${pick ? '' : 'selected'}>Choose player…</option>${opts}
+    <option value="guest" ${pick === 'guest' ? 'selected' : ''}>Guest (doesn't count)</option></select>`;
+}
 function viewAdd() {
   if (!canWrite()) return signInPanel('add rounds');
   const d = S.draft;
   const season = seasonForDate(S.seasons, d.date);
-  const players = knownPlayers();
+  const mapping = S.register && S.players.length > 0;
   const dupes = d.date ? S.rounds.filter(r => r.date === d.date && r.id !== d.id) : [];
   const photo = photoOn() ? `
     <div class="drop" id="drop">
-      <div><h2>1 · Scorecard photo</h2><div class="muted">Take a photo of the Trackman scorecard (or a screenshot). Claude reads names, handicaps, gross and Stableford points. Check the numbers before saving.</div></div>
-      <div class="row" style="justify-content:start">
+      <div><h2>1 · Scorecard photo</h2><div class="muted">Take a photo of the Trackman scorecard (or a screenshot). Claude reads the names, handicaps, gross and Stableford points. Check the numbers before saving.</div></div>
+      <div class="row start">
         <label class="btn" for="photo-input">Choose photos<input id="photo-input" type="file" accept="image/*" multiple hidden></label>
         <button class="btn primary" id="read-btn" ${S.photos.length && !S.reading ? '' : 'disabled'}>${S.reading ? 'Reading scorecard…' : 'Read scorecard'}</button>
       </div>
       ${S.photos.length ? `<div class="thumbs">${S.photos.map(p => `<img src="${p.url}" alt="Scorecard photo">`).join('')}</div>` : ''}
       ${S.readMsg ? `<div class="note ${S.readMsg.kind}">${esc(S.readMsg.text)}</div>` : ''}
-    </div>` : (DEMO ? '<div class="note">Photo reading is off in the demo. Type scores below to try the standings.</div>' : '');
+    </div>` : (DEMO ? '<div class="note">Photo reading is off in the demo. Type a Trackman name such as KIDDIEIKA66 below to see it matched.</div>' : '');
   return `<div class="panel">
     ${d.id ? `<div class="note">Editing the round from ${fmtDateLong(d.date)}. <button class="btn small" id="cancel-edit">Cancel</button></div>` : photo}
     <h2>${d.id ? 'Round details' : (photo ? '2 · Check and save' : 'Enter the scores')}</h2>
@@ -324,32 +497,35 @@ function viewAdd() {
       <label class="f" for="f-course">Course<input id="f-course" value="${esc(d.course)}" placeholder="e.g. Pebble Beach"></label>
     </div>
     <div class="note ${season ? 'ok' : 'warn'}">${season ? `Counts toward <b>${esc(season.name)}</b>.` : 'This date is outside every competition. It will be saved but not counted.'}${dupes.length ? ` A round on this date is already saved (${dupes.map(r => esc(r.course || 'no course')).join(', ')}).` : ''}</div>
-    <datalist id="players">${players.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
     <div class="scroll"><table class="entry">
-      <thead><tr><th>Player</th><th class="r">Hcp</th><th class="r">Gross</th><th class="r">Points</th><th></th></tr></thead>
+      <thead><tr><th>Name on scorecard</th>${mapping ? '<th>Player</th>' : ''}<th class="r">Hcp</th><th class="r">Gross</th><th class="r">Points</th><th></th></tr></thead>
       <tbody>${d.scores.map((s, i) => `<tr>
-        <td><input id="s-${i}-player" data-i="${i}" data-k="player" list="players" value="${esc(s.player)}" placeholder="Name" style="min-width:9em"></td>
+        <td class="card"><input id="s-${i}-card" data-i="${i}" data-k="card" value="${esc(s.card)}" placeholder="Trackman name" autocapitalize="characters"></td>
+        ${mapping ? `<td>${playerSelect(i, s.pick)}</td>` : ''}
         <td class="n"><input id="s-${i}-hcp" data-i="${i}" data-k="hcp" inputmode="decimal" value="${esc(s.hcp)}"></td>
         <td class="n"><input id="s-${i}-gross" data-i="${i}" data-k="gross" inputmode="numeric" value="${esc(s.gross)}"></td>
         <td class="n"><input id="s-${i}-points" data-i="${i}" data-k="points" inputmode="numeric" value="${esc(s.points)}"></td>
         <td><button class="btn small" data-remove="${i}" aria-label="Remove row">✕</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
+    ${mapping ? `<p class="rules">Registered Trackman IDs are matched automatically. When you pick a player for a new name, it's remembered for next time.</p>` : ''}
     <div class="row">
       <button class="btn" id="add-row">Add player</button>
       <div class="row">
         ${S.saveMsg ? `<span style="color:${S.saveMsg.kind === 'warn' ? 'var(--flag)' : 'var(--muted)'}">${esc(S.saveMsg.text)}</span>` : ''}
-        <button class="btn primary" id="save-round">${d.id ? 'Save changes' : 'Save round'}</button>
+        <button class="btn primary" id="save-round" ${S.busy ? 'disabled' : ''}>${d.id ? 'Save changes' : 'Save round'}</button>
       </div>
     </div>
   </div>`;
 }
 
+/* ---------- Rounds ---------- */
 function viewRounds() {
   const season = currentSeason();
   const list = [...S.rounds].filter(r => !season || (r.date >= season.start && r.date <= season.end)).sort((a, b) => b.date.localeCompare(a.date));
   const outside = S.rounds.filter(r => !seasonForDate(S.seasons, r.date)).length;
   if (!list.length) return `<div class="panel empty"><h2>No rounds in ${esc(season?.name || 'this competition')}</h2><button class="btn primary" data-go="add">Add a round</button></div>`;
+  const idx = aliasIndex();
   return `<div class="panel">
     <div class="row"><h2>${esc(season?.name || 'All rounds')} · ${list.length} round${list.length === 1 ? '' : 's'}</h2></div>
     ${list.map(r => {
@@ -359,10 +535,90 @@ function viewRounds() {
         ${canWrite() ? `<div class="row">${S.confirmDelete === r.id
           ? `<span class="muted">Delete this round?</span><button class="btn small danger" data-del-yes="${esc(r.id)}">Delete</button><button class="btn small" data-del-no>Keep</button>`
           : `<button class="btn small" data-edit="${esc(r.id)}">Edit</button><button class="btn small danger" data-del="${esc(r.id)}">Delete</button>`}</div>` : ''}</div>
-        <div class="who">${sc.map(s => `<span>${esc(s.player)} <b>${s.points ?? '–'}</b><span class="muted"> pts · ${s.gross ?? '–'}</span></span>`).join('')}</div>
+        <div class="who">${sc.map(s => { const p = s.guest ? null : playerForScore(s, idx); return `<span>${esc(p?.name || s.card_name || s.player)}${s.guest ? ' <span class="pill">Guest</span>' : ''} <b>${s.points ?? '–'}</b><span class="muted"> pts · ${s.gross ?? '–'}</span></span>`; }).join('')}</div>
       </div>`;
     }).join('')}
     ${outside ? `<p class="rules">${outside} saved round${outside === 1 ? ' falls' : 's fall'} outside every competition's dates.</p>` : ''}
+  </div>`;
+}
+
+/* ---------- League: players, events, competitions ---------- */
+function viewLeague() {
+  return `<div class="stack">${S.register ? viewPlayers() + viewEvents() : registerMissing()}${viewSettings()}</div>`;
+}
+
+function viewPlayers() {
+  const e = S.editPlayer;
+  const unmatched = canWrite() ? unmatchedCardNames() : [];
+  const roundsFor = p => S.rounds.filter(r => (r.scores || []).some(s => !s.guest && playerForScore(s)?.id === p.id)).length;
+  const emailOf = p => S.accounts.find(a => a.player_id === p.id)?.email || '';
+  const adminOf = p => !!S.accounts.find(a => a.player_id === p.id)?.is_admin;
+  const form = e ? `<div class="panel">
+      <h2>${e.id ? 'Edit ' + esc(e.name || 'player') : 'Register a player'}</h2>
+      <div class="grid2">
+        <label class="f" for="p-name">Name<input id="p-name" value="${esc(e.name)}" placeholder="e.g. Jón Ingi"></label>
+        <label class="f" for="p-ids">Trackman IDs<input id="p-ids" value="${esc(e.ids)}" placeholder="e.g. KIDDIEIKA66, JONINGI"></label>
+        <label class="f" for="p-email">Sign-in email (optional)<input id="p-email" type="email" value="${esc(e.email)}" placeholder="Needed to answer and add rounds"></label>
+      </div>
+      <div class="row start">
+        <label class="check" for="p-admin"><input id="p-admin" type="checkbox" ${e.admin ? 'checked' : ''}> Organiser (can manage players, events and competitions)</label>
+        <label class="check" for="p-active"><input id="p-active" type="checkbox" ${e.active ? 'checked' : ''}> Active this winter</label>
+      </div>
+      <p class="rules">Trackman IDs are the names this player appears under on scorecards. Separate several with commas. Long names cut off with "..." on the card still match.</p>
+      <div class="row"><span id="p-msg" style="color:var(--flag)"></span><div class="row">
+        ${e.id ? (S.confirmDelete === 'player:' + e.id ? `<span class="muted">Remove ${esc(e.name)}? Their scores stay but won't be linked.</span><button class="btn danger" id="p-del-yes">Remove</button>` : `<button class="btn danger" id="p-del">Remove</button>`) : ''}
+        <button class="btn" id="p-cancel">Cancel</button><button class="btn primary" id="p-save" ${S.busy ? 'disabled' : ''}>Save</button></div></div>
+    </div>` : '';
+  const players = [...S.players].sort((a, b) => (b.active - a.active) || a.name.localeCompare(b.name));
+  return `${form}<div class="panel">
+    <div class="row"><h2>Players · ${S.players.filter(p => p.active).length}</h2>${canEdit() && !e ? '<button class="btn" id="p-new">Register a player</button>' : ''}</div>
+    ${players.length ? `<div class="scroll"><table>
+      <thead><tr><th>Name</th><th>Trackman IDs</th>${canEdit() && !DEMO ? '<th class="hide-sm">Sign-in email</th>' : ''}<th class="r hide-sm">Rounds</th><th></th></tr></thead>
+      <tbody>${players.map(p => `<tr>
+        <td class="player">${esc(p.name)}${p.active ? '' : ' <span class="pill">Inactive</span>'}${adminOf(p) ? ' <span class="pill">Organiser</span>' : ''}</td>
+        <td><div class="tms">${p.ids.length ? p.ids.map(t => `<span class="tm">${esc(t)}</span>`).join('') : '<span class="muted">None yet</span>'}</div></td>
+        ${canEdit() && !DEMO ? `<td class="hide-sm">${emailOf(p) ? esc(emailOf(p)) : '<span class="muted">No sign-in</span>'}</td>` : ''}
+        <td class="r num hide-sm">${roundsFor(p)}</td>
+        <td class="r">${canEdit() ? `<button class="btn small" data-eplayer="${esc(p.id)}">Edit</button>` : ''}</td>
+      </tr>`).join('')}</tbody></table></div>` : `<p class="muted" style="margin:0">No players registered yet.</p>`}
+  </div>
+  ${unmatched.length ? `<div class="panel">
+    <h2>Scorecard names to link</h2>
+    <p class="rules">These names appear on saved scorecards but don't belong to a registered player. Link each one once; past and future rounds then count for that player.</p>
+    <div class="scroll"><table><tbody>${unmatched.map((u, i) => `<tr>
+      <td><span class="tm">${esc(u.name)}</span></td><td class="muted num hide-sm">${u.count} score${u.count === 1 ? '' : 's'}</td>
+      <td><select id="link-${i}" aria-label="Player for ${esc(u.name)}"><option value="">Choose player…</option>${activePlayers().map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></td>
+      <td class="r"><button class="btn small" data-link="${i}" data-card="${esc(u.name)}">Link</button></td></tr>`).join('')}</tbody></table></div>
+  </div>` : ''}`;
+}
+
+function viewEvents() {
+  const e = S.editEvent;
+  const t = today();
+  const upcoming = S.events.filter(x => x.date >= t).sort((a, b) => a.date.localeCompare(b.date));
+  const past = S.events.filter(x => x.date < t).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  const count = id => S.attendance.filter(a => a.event_id === id && a.status === 'yes').length;
+  const row = x => `<tr><td class="player">${esc(fmtDateLong(x.date))}</td><td class="num">${esc(fmtTime(x.time)) || '<span class="muted">–</span>'}</td><td>${esc(x.location)}</td><td class="r num">${count(x.id)}</td>
+    <td class="r">${canEdit() ? `<button class="btn small" data-eevent="${esc(x.id)}">Edit</button>` : ''}</td></tr>`;
+  const form = e ? `<div class="panel">
+      <h2>${e.id ? 'Edit league night' : 'Add league nights'}</h2>
+      <div class="grid2">
+        <label class="f" for="v-date">Date<input id="v-date" type="date" value="${esc(e.date)}"></label>
+        <label class="f" for="v-time">Starts<input id="v-time" type="time" value="${esc(fmtTime(e.time))}"></label>
+        <label class="f" for="v-loc">Where<input id="v-loc" value="${esc(e.location)}" placeholder="e.g. Golfhöllin, bay 3"></label>
+        ${e.id ? '' : `<label class="f" for="v-until">Repeat weekly until (optional)<input id="v-until" type="date" value="${esc(e.until)}"></label>`}
+      </div>
+      <label class="f" for="v-notes">Note (optional)<input id="v-notes" value="${esc(e.notes)}" placeholder="e.g. Bring your own balls"></label>
+      <div class="row"><span id="v-msg" style="color:var(--flag)"></span><div class="row">
+        ${e.id ? (S.confirmDelete === 'event:' + e.id ? `<span class="muted">Delete this night and its answers?</span><button class="btn danger" id="v-del-yes">Delete</button>` : `<button class="btn danger" id="v-del">Delete</button>`) : ''}
+        <button class="btn" id="v-cancel">Cancel</button><button class="btn primary" id="v-save" ${S.busy ? 'disabled' : ''}>Save</button></div></div>
+    </div>` : '';
+  return `${form}<div class="panel">
+    <div class="row"><h2>League nights</h2>${canEdit() && !e ? '<button class="btn" id="v-new">Add league nights</button>' : ''}</div>
+    ${upcoming.length ? `<div class="scroll"><table><thead><tr><th>Date</th><th>Starts</th><th>Where</th><th class="r">Coming</th><th></th></tr></thead><tbody>${upcoming.map(row).join('')}</tbody></table></div>`
+      : `<p class="muted" style="margin:0">No upcoming nights.${canEdit() ? ' Add one, or a weekly series, with the button above.' : ''}</p>`}
+    ${past.length ? `<details><summary>Past nights</summary><div class="scroll"><table><tbody>${past.map(row).join('')}</tbody></table></div></details>` : ''}
+    <p class="rules">The next night on or after today is shown on the Next round page.</p>
   </div>`;
 }
 
@@ -382,7 +638,7 @@ function viewSettings() {
         ${e.id ? (S.confirmDelete === 'season:' + e.id ? `<span class="muted">Remove competition? Rounds stay saved.</span><button class="btn danger" id="e-del-yes">Remove</button>` : `<button class="btn danger" id="e-del">Remove</button>`) : ''}
         <button class="btn" id="e-cancel">Cancel</button><button class="btn primary" id="e-save">Save</button></div></div>
     </div>` : '';
-  return `<div style="display:grid;gap:14px">${form}<div class="panel">
+  return `${form}<div class="panel">
     <div class="row"><h2>Competitions this winter</h2>${canEdit() && !e ? '<button class="btn" id="e-new">New competition</button>' : ''}</div>
     <div class="scroll"><table>
       <thead><tr><th>Competition</th><th>Dates</th><th class="r">Played</th><th class="r">Planned (x)</th><th class="r">Counting (y)</th><th></th></tr></thead>
@@ -392,27 +648,32 @@ function viewSettings() {
         <td class="r">${canEdit() ? `<button class="btn small" data-eseason="${esc(s.id)}">Edit</button>` : ''}</td></tr>`;
       }).join('') || '<tr><td colspan="6" class="muted">None yet.</td></tr>'}</tbody>
     </table></div>
-    <p class="rules">Each competition starts from zero. A round belongs to the competition whose dates include it. ${canEdit() ? '' : 'Only the league organiser can change these.'}</p>
-  </div></div>`;
+    <p class="rules">Each competition starts from zero. A round belongs to the competition whose dates include it. ${canEdit() ? '' : 'Only organisers can change these.'}</p>
+  </div>`;
 }
 
 /* ---------- events ---------- */
 document.addEventListener('click', async ev => {
   const t = ev.target.closest('button, [data-go]');
   if (!t) return;
-  if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('twl-tab', S.tab); } catch {} S.confirmDelete = null; render(); return; }
+  if (t.dataset.tab) { S.tab = t.dataset.tab; S.confirmDelete = null; S.flash = null; render(); return; }
   if (t.dataset.go) { S.tab = t.dataset.go; render(); return; }
+  if (t.id === 'go-signin') { S.tab = 'next'; render(); focus('#signin-email'); return; }
   if (t.dataset.season) { S.seasonId = t.dataset.season; render(); return; }
   if (t.dataset.metric) { S.metric = t.dataset.metric; render(); return; }
+  if (t.dataset.rsvp) return setAnswer(t.dataset.ev, t.dataset.pl, t.dataset.rsvp);
   if (t.id === 'sign-out') { await S.sb.auth.signOut(); return; }
-  if (t.id === 'add-row') { S.draft.scores.push(blankScore()); render(); focus(`#s-${S.draft.scores.length - 1}-player`); return; }
+  if (t.id === 'add-row') { S.draft.scores.push(blankScore()); render(); focus(`#s-${S.draft.scores.length - 1}-card`); return; }
   if (t.dataset.remove != null) { S.draft.scores.splice(Number(t.dataset.remove), 1); if (!S.draft.scores.length) S.draft.scores.push(blankScore()); render(); return; }
   if (t.id === 'read-btn') return readScorecard();
   if (t.id === 'save-round') return saveRound();
   if (t.id === 'cancel-edit') { S.draft = newDraft(); S.saveMsg = null; render(); return; }
   if (t.dataset.edit) {
     const r = S.rounds.find(x => x.id === t.dataset.edit); if (!r) return;
-    S.draft = { id: r.id, date: r.date, course: r.course || '', scores: (r.scores || []).map(s => ({ player: s.player ?? '', hcp: s.hcp ?? '', gross: s.gross ?? '', points: s.points ?? '' })) };
+    const idx = aliasIndex();
+    S.draft = { id: r.id, date: r.date, course: r.course || '', scores: (r.scores || []).map(s => ({
+      card: s.card_name ?? s.player ?? '', pick: s.guest ? 'guest' : (playerForScore(s, idx)?.id || ''),
+      hcp: s.hcp ?? '', gross: s.gross ?? '', points: s.points ?? '' })) };
     S.saveMsg = null; S.tab = 'add'; render(); return;
   }
   if (t.dataset.del) { S.confirmDelete = t.dataset.del; render(); return; }
@@ -423,9 +684,34 @@ document.addEventListener('click', async ev => {
     else { const { error } = await S.sb.from('rounds').delete().eq('id', id); if (error) console.warn(error); await loadAll(); }
     S.confirmDelete = null; render(); return;
   }
+  if (t.dataset.link != null) return linkCardName(t.dataset.card, $('#link-' + t.dataset.link)?.value);
+  // Players
+  if (t.id === 'p-new') { S.editPlayer = { id: null, name: '', ids: '', email: '', admin: false, active: true }; S.confirmDelete = null; render(); focus('#p-name'); return; }
+  if (t.dataset.eplayer) {
+    const p = playerById(t.dataset.eplayer); const acc = S.accounts.find(a => a.player_id === p.id);
+    S.editPlayer = { id: p.id, name: p.name, ids: p.ids.join(', '), email: acc?.email || '', origEmail: acc?.email || '', admin: !!acc?.is_admin, active: p.active };
+    S.confirmDelete = null; render(); window.scrollTo({ top: 0 }); return;
+  }
+  if (t.id === 'p-cancel') { S.editPlayer = null; S.confirmDelete = null; render(); return; }
+  if (t.id === 'p-save') return savePlayer();
+  if (t.id === 'p-del') { S.confirmDelete = 'player:' + S.editPlayer.id; render(); return; }
+  if (t.id === 'p-del-yes') return deletePlayer();
+  // League nights
+  if (t.id === 'v-new') {
+    const last = [...S.events].sort((a, b) => b.date.localeCompare(a.date))[0];
+    const base = last && last.date >= today() ? addDays(last.date, 7) : today();
+    S.editEvent = { id: null, date: base, time: last?.time || '', location: last?.location || '', notes: '', until: '' };
+    S.confirmDelete = null; render(); return;
+  }
+  if (t.dataset.eevent) { S.editEvent = { ...S.events.find(x => x.id === t.dataset.eevent), until: '' }; S.confirmDelete = null; render(); window.scrollTo({ top: 0 }); return; }
+  if (t.id === 'v-cancel') { S.editEvent = null; S.confirmDelete = null; render(); return; }
+  if (t.id === 'v-save') return saveEvent();
+  if (t.id === 'v-del') { S.confirmDelete = 'event:' + S.editEvent.id; render(); return; }
+  if (t.id === 'v-del-yes') return deleteEvent();
+  // Competitions
   if (t.id === 'e-new') {
     const last = sortedSeasons().slice(-1)[0];
-    S.editSeason = { id: null, name: '', start: last ? addDay(last.end) : today(), end: '', plannedRounds: 8, bestOf: 5 }; render(); return;
+    S.editSeason = { id: null, name: '', start: last ? addDays(last.end, 1) : today(), end: '', plannedRounds: 8, bestOf: 5 }; render(); return;
   }
   if (t.dataset.eseason) { const s = S.seasons.find(x => x.id === t.dataset.eseason); S.editSeason = { ...s }; S.confirmDelete = null; render(); return; }
   if (t.id === 'e-cancel') { S.editSeason = null; S.confirmDelete = null; render(); return; }
@@ -455,23 +741,63 @@ document.addEventListener('submit', async ev => {
 
 document.addEventListener('input', ev => {
   const el = ev.target;
-  if (el.dataset.k) { S.draft.scores[Number(el.dataset.i)][el.dataset.k] = el.value; return; }
+  if (el.dataset.k) {
+    const row = S.draft.scores[Number(el.dataset.i)];
+    row[el.dataset.k] = el.value;
+    if (el.dataset.k === 'pick') el.classList.toggle('unset', !el.value);
+    return;
+  }
   if (el.id === 'f-course') { S.draft.course = el.value; return; }
-  const k = { 'e-name': 'name', 'e-start': 'start', 'e-end': 'end', 'e-planned': 'plannedRounds', 'e-best': 'bestOf' }[el.id];
-  if (k) S.editSeason[k] = el.value;
+  const sk = { 'e-name': 'name', 'e-start': 'start', 'e-end': 'end', 'e-planned': 'plannedRounds', 'e-best': 'bestOf' }[el.id];
+  if (sk) { S.editSeason[sk] = el.value; return; }
+  const pk = { 'p-name': 'name', 'p-ids': 'ids', 'p-email': 'email' }[el.id];
+  if (pk) { S.editPlayer[pk] = el.value; return; }
+  const vk = { 'v-date': 'date', 'v-time': 'time', 'v-loc': 'location', 'v-notes': 'notes', 'v-until': 'until' }[el.id];
+  if (vk) { S.editEvent[vk] = el.value; return; }
 });
 document.addEventListener('change', ev => {
   const el = ev.target;
   if (el.id === 'f-date') { S.draft.date = el.value; render(); }
   if (el.id === 'photo-input') addPhotos(el.files);
+  if (el.id === 'p-admin') S.editPlayer.admin = el.checked;
+  if (el.id === 'p-active') S.editPlayer.active = el.checked;
+  // Typing a Trackman name picks the registered player it belongs to.
+  if (el.dataset.k === 'card') {
+    const row = S.draft.scores[Number(el.dataset.i)];
+    const p = findPlayer(el.value);
+    if (p && !row.pick) { row.pick = p.id; render(); }
+  }
 });
 document.addEventListener('dragover', ev => { const d = ev.target.closest?.('#drop'); if (d) { ev.preventDefault(); d.classList.add('over'); } });
 document.addEventListener('dragleave', ev => { const d = ev.target.closest?.('#drop'); if (d) d.classList.remove('over'); });
 document.addEventListener('drop', ev => { const d = ev.target.closest?.('#drop'); if (d) { ev.preventDefault(); addPhotos(ev.dataTransfer.files); } });
 
 function focus(sel) { requestAnimationFrame(() => $(sel)?.focus()); }
-function addDay(d) { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + 1); return x.toISOString().slice(0, 10); }
 
+/* ---------- attendance ---------- */
+async function setAnswer(eventId, playerId, status) {
+  if (!eventId || !playerId || S.busy) return;
+  const current = answerOf(eventId, playerId);
+  const clear = current === status; // tapping the same answer again clears it
+  S.flash = null;
+  if (DEMO) {
+    S.attendance = S.attendance.filter(a => !(a.event_id === eventId && a.player_id === playerId));
+    if (!clear) S.attendance.push({ event_id: eventId, player_id: playerId, status });
+    render(); return;
+  }
+  S.busy = true; render();
+  const q = clear
+    ? S.sb.from('attendance').delete().eq('event_id', eventId).eq('player_id', playerId).select()
+    : S.sb.from('attendance').upsert({ event_id: eventId, player_id: playerId, status, updated_at: new Date().toISOString() }, { onConflict: 'event_id,player_id' }).select();
+  const { data, error } = await q;
+  S.busy = false;
+  if (error || !data?.length) { console.warn(error); S.flash = 'Your answer wasn’t saved. Sign in again and retry.'; render(); return; }
+  S.attendance = S.attendance.filter(a => !(a.event_id === eventId && a.player_id === playerId));
+  if (!clear) S.attendance.push({ event_id: eventId, player_id: playerId, status });
+  render();
+}
+
+/* ---------- photo ---------- */
 function addPhotos(files) {
   const imgs = [...(files || [])].filter(f => f.type.startsWith('image/'));
   if (!imgs.length) return;
@@ -499,7 +825,7 @@ async function readScorecard() {
     let images;
     try { images = await Promise.all(S.photos.map(async p => ({ media_type: 'image/jpeg', data: await toJpegBase64(p.file) }))); }
     catch { throw { friendly: 'That photo could not be opened. Try a JPEG or PNG.' }; }
-    const { data, error } = await S.sb.functions.invoke('read-scorecard', { body: { images, players: knownPlayers() } });
+    const { data, error } = await S.sb.functions.invoke('read-scorecard', { body: { images } });
     if (error) {
       let msg = 'The photo reader is not available. Enter the scores by hand.';
       try { const b = await error.context.json(); if (b?.error) msg = b.error; } catch {}
@@ -508,12 +834,18 @@ async function readScorecard() {
     const ps = Array.isArray(data?.players) ? data.players : [];
     if (!ps.length) throw { friendly: 'No scores could be read from that photo. Try a sharper, straight-on photo, or type them in.' };
     const clean = v => (v === null || v === undefined || v === '') ? '' : String(v);
-    S.draft.scores = ps.map(p => ({ player: String(p.player ?? '').trim(), hcp: clean(p.hcp), gross: clean(p.gross), points: clean(p.points) }));
+    const idx = aliasIndex();
+    S.draft.scores = ps.map(p => {
+      const card = String(p.player ?? '').trim();
+      return { card, pick: findPlayer(card, idx)?.id || '', hcp: clean(p.hcp), gross: clean(p.gross), points: clean(p.points) };
+    });
     if (data.course && !S.draft.course) S.draft.course = String(data.course);
     if (/^\d{4}-\d{2}-\d{2}$/.test(data.date || '')) S.draft.date = data.date;
     const unsure = Array.isArray(data.uncertain) && data.uncertain.length ? ' Check: ' + data.uncertain.join('; ') + '.' : '';
     const missing = S.draft.scores.some(s => s.points === '') ? ' Some Stableford points were missing on the card; fill them in.' : '';
-    S.readMsg = { kind: unsure || missing ? 'warn' : 'ok', text: `Found ${ps.length} player${ps.length === 1 ? '' : 's'}. Check every number against the card before saving.${unsure}${missing}` };
+    const unlinked = S.register && S.players.length ? S.draft.scores.filter(s => !s.pick).length : 0;
+    const link = unlinked ? ` ${unlinked} name${unlinked === 1 ? ' isn’t' : 's aren’t'} linked to a player yet; choose who ${unlinked === 1 ? 'it is' : 'they are'}.` : '';
+    S.readMsg = { kind: unsure || missing || link ? 'warn' : 'ok', text: `Found ${ps.length} player${ps.length === 1 ? '' : 's'}. Check every number against the card before saving.${link}${unsure}${missing}` };
   } catch (e) {
     console.warn(e);
     S.readMsg = { kind: 'warn', text: e?.friendly || 'Reading failed. Try again, or enter the scores by hand.' };
@@ -521,39 +853,151 @@ async function readScorecard() {
   S.reading = false; render();
 }
 
-/* ---------- saving ---------- */
+/* ---------- saving rounds ---------- */
 async function saveRound() {
   const d = S.draft;
-  const scores = d.scores
-    .map(s => ({ player: String(s.player).trim(), hcp: num(s.hcp), gross: num(s.gross), points: num(s.points) }))
-    .filter(s => s.player);
+  const mapping = S.register && S.players.length > 0;
+  const rows = d.scores.filter(s => String(s.card).trim() || s.pick && s.pick !== 'guest');
   const fail = text => { S.saveMsg = { kind: 'warn', text }; render(); };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return fail('Pick the date of the round.');
-  if (!scores.length) return fail('Add at least one player.');
-  const names = scores.map(s => s.player.toLowerCase());
-  if (new Set(names).size !== names.length) return fail('A player is listed twice.');
-  if (scores.some(s => s.points == null && s.gross == null)) return fail('Every player needs points or a gross score.');
-  // Snap names to existing spelling so "jon" and "Jon" stay one player.
-  const known = new Map(knownPlayers().map(n => [n.toLowerCase(), n]));
-  scores.forEach(s => { s.player = known.get(s.player.toLowerCase()) || s.player; });
+  if (!rows.length) return fail('Add at least one player.');
+  if (mapping && rows.some(s => !s.pick)) return fail('Choose who each scorecard name is, or mark them as a guest.');
+  if (rows.some(s => num(s.points) == null && num(s.gross) == null)) return fail('Every player needs points or a gross score.');
+  const ids = rows.map(s => s.pick).filter(p => p && p !== 'guest');
+  if (new Set(ids).size !== ids.length) return fail('A player is listed twice.');
+  const cards = rows.map(s => normCardName(s.card)).filter(Boolean);
+  if (!mapping && new Set(cards).size !== cards.length) return fail('A player is listed twice.');
+
+  const scores = rows.map(s => {
+    const card = String(s.card).trim();
+    const p = s.pick && s.pick !== 'guest' ? playerById(s.pick) : null;
+    const out = { player: p?.name || card, card_name: card || null, player_id: p?.id || null, hcp: num(s.hcp), gross: num(s.gross), points: num(s.points) };
+    if (s.pick === 'guest') out.guest = true;
+    return out;
+  });
   const round = { id: d.id, date: d.date, course: d.course.trim(), scores };
+  S.busy = true; render();
+  // Remember new Trackman names so the next scorecard matches by itself.
+  const learn = rows.filter(s => s.pick && s.pick !== 'guest' && normCardName(s.card) && findPlayer(s.card)?.id !== s.pick);
+  let clash = [];
   if (DEMO) {
+    for (const s of learn) { const p = playerById(s.pick); if (!aliasIndex().has(normCardName(s.card))) p.ids.push(normCardName(s.card)); else clash.push(s.card); }
     if (d.id) S.rounds = S.rounds.map(r => r.id === d.id ? round : r);
     else S.rounds.push({ ...round, id: 'demo-' + Date.now() });
   } else {
     const q = d.id ? S.sb.from('rounds').update(toRound(round)).eq('id', d.id).select() : S.sb.from('rounds').insert(toRound(round)).select();
     const { data, error } = await q;
-    if (error || !data?.length) { console.warn(error); return fail(error ? 'Could not save. Check your connection and try again.' : 'Not saved: your account may not be allowed to change rounds.'); }
+    if (error || !data?.length) { S.busy = false; console.warn(error); return fail(error ? 'Could not save. Check your connection and try again.' : 'Not saved: your account may not be allowed to change rounds.'); }
+    for (const s of learn) {
+      const { data: ok, error: e2 } = await S.sb.rpc('add_trackman_id', { p_player: s.pick, p_card_name: s.card });
+      if (e2 || ok === false) clash.push(s.card);
+    }
     await loadAll();
   }
+  S.busy = false;
   const season = seasonForDate(S.seasons, d.date);
   S.photos.forEach(p => URL.revokeObjectURL(p.url));
   S.photos = []; S.readMsg = null; S.draft = newDraft();
-  S.saveMsg = { kind: 'ok', text: 'Round saved.' };
-  if (season) { S.seasonId = season.id; S.tab = 'standings'; }
+  S.saveMsg = { kind: clash.length ? 'warn' : 'ok', text: clash.length ? `Round saved. ${clash.join(', ')} already belongs to another player, so it wasn't added to the register.` : 'Round saved.' };
+  if (season && !clash.length) { S.seasonId = season.id; S.tab = 'standings'; }
   render();
 }
 
+async function linkCardName(card, playerId) {
+  if (!playerId) return;
+  if (DEMO) { playerById(playerId).ids.push(normCardName(card)); render(); return; }
+  const { data, error } = await S.sb.rpc('add_trackman_id', { p_player: playerId, p_card_name: card });
+  if (error || data === false) console.warn(error || 'already linked');
+  await loadAll();
+}
+
+/* ---------- saving players (organisers) ---------- */
+async function savePlayer() {
+  const e = S.editPlayer;
+  const msg = t => { const m = $('#p-msg'); if (m) m.textContent = t; };
+  const name = String(e.name).trim();
+  const ids = [...new Set(String(e.ids).split(',').map(normCardName).filter(Boolean))];
+  const email = String(e.email).trim().toLowerCase();
+  if (!name) return msg('Give the player a name.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return msg('Check the email address.');
+  const taken = ids.find(t => { const p = aliasIndex().get(t); return p && p.id !== e.id && p.ids.map(normCardName).includes(t); });
+  if (taken) return msg(`${taken} already belongs to ${aliasIndex().get(taken).name}.`);
+  const meEmail = S.session?.user?.email?.toLowerCase();
+  if (!DEMO && e.origEmail && e.origEmail.toLowerCase() === meEmail && (!e.admin || email !== meEmail)) return msg('You can’t remove your own organiser access or change your own email here.');
+  if (DEMO) {
+    if (e.id) Object.assign(playerById(e.id), { name, ids, active: e.active });
+    else S.players.push({ id: 'demo-p' + Date.now(), name, ids, active: e.active });
+    S.editPlayer = null; render(); return;
+  }
+  S.busy = true; render();
+  const body = { name, trackman_ids: ids, active: !!e.active };
+  const q = e.id ? S.sb.from('players').update(body).eq('id', e.id).select() : S.sb.from('players').insert(body).select();
+  const { data, error } = await q;
+  if (error || !data?.length) { S.busy = false; render(); return msg('Not saved. Only organisers can register players.'); }
+  const pid = data[0].id;
+  // Sign-in email lives in members (never public).
+  let accErr = null;
+  if (e.origEmail && e.origEmail.toLowerCase() !== email) {
+    ({ error: accErr } = await S.sb.from('members').delete().eq('email', e.origEmail));
+  }
+  if (!accErr && email) {
+    ({ error: accErr } = await S.sb.from('members').upsert({ email, name, is_admin: !!e.admin, player_id: pid }, { onConflict: 'email' }));
+  }
+  S.busy = false;
+  await Promise.all([loadAll(), loadAccounts()]);
+  if (accErr) { console.warn(accErr); S.editPlayer = { ...e, id: pid }; render(); return msg(/duplicate|unique/i.test(accErr.message) ? 'That email is already linked to another player.' : 'Player saved, but the sign-in email wasn’t.'); }
+  S.editPlayer = null; render();
+}
+
+async function deletePlayer() {
+  const id = S.editPlayer.id;
+  if (DEMO) { S.players = S.players.filter(p => p.id !== id); S.attendance = S.attendance.filter(a => a.player_id !== id); }
+  else {
+    const acc = S.accounts.find(a => a.player_id === id);
+    if (acc && acc.email.toLowerCase() === S.session?.user?.email?.toLowerCase()) { $('#p-msg').textContent = 'You can’t remove yourself.'; return; }
+    if (acc) await S.sb.from('members').delete().eq('email', acc.email);
+    const { error } = await S.sb.from('players').delete().eq('id', id);
+    if (error) { $('#p-msg').textContent = 'Could not remove the player.'; return; }
+    await Promise.all([loadAll(), loadAccounts()]);
+  }
+  S.editPlayer = null; S.confirmDelete = null; render();
+}
+
+/* ---------- saving league nights (organisers) ---------- */
+async function saveEvent() {
+  const e = S.editEvent;
+  const msg = t => { $('#v-msg').textContent = t; };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return msg('Pick a date.');
+  let dates = [e.date];
+  if (!e.id && e.until) {
+    if (e.until < e.date) return msg('"Repeat until" is before the first date.');
+    dates = [];
+    for (let d = e.date; d <= e.until && dates.length < 40; d = addDays(d, 7)) dates.push(d);
+  }
+  const base = { time: e.time || null, location: String(e.location || '').trim(), notes: String(e.notes || '').trim() };
+  if (DEMO) {
+    if (e.id) Object.assign(S.events.find(x => x.id === e.id), { date: e.date, ...base });
+    else dates.forEach((d, i) => S.events.push({ id: 'demo-e' + Date.now() + i, date: d, ...base }));
+    S.editEvent = null; render(); return;
+  }
+  S.busy = true; render();
+  const q = e.id
+    ? S.sb.from('events').update(toEvent({ date: e.date, ...base })).eq('id', e.id).select()
+    : S.sb.from('events').insert(dates.map(d => toEvent({ date: d, ...base }))).select();
+  const { data, error } = await q;
+  S.busy = false;
+  if (error || !data?.length) { render(); return msg('Not saved. Only organisers can plan league nights.'); }
+  S.editEvent = null; await loadAll();
+}
+
+async function deleteEvent() {
+  const id = S.editEvent.id;
+  if (DEMO) { S.events = S.events.filter(x => x.id !== id); S.attendance = S.attendance.filter(a => a.event_id !== id); }
+  else { const { error } = await S.sb.from('events').delete().eq('id', id); if (error) { $('#v-msg').textContent = 'Could not delete it.'; return; } await loadAll(); }
+  S.editEvent = null; S.confirmDelete = null; render();
+}
+
+/* ---------- saving competitions (organisers) ---------- */
 async function saveSeason() {
   const e = S.editSeason;
   const msg = t => { $('#e-msg').textContent = t; };
@@ -570,7 +1014,7 @@ async function saveSeason() {
   } else {
     const q = e.id ? S.sb.from('seasons').update(toSeason(s)).eq('id', e.id).select() : S.sb.from('seasons').insert(toSeason(s)).select();
     const { data, error } = await q;
-    if (error || !data?.length) return msg('Not saved. Only the organiser can change competitions.');
+    if (error || !data?.length) return msg('Not saved. Only organisers can change competitions.');
     if (!e.id) S.seasonId = data[0].id;
     await loadAll();
   }
@@ -580,30 +1024,40 @@ async function saveSeason() {
 // Refreshes shouldn't yank the cursor out of a field someone is typing in.
 function renderKeepFocus() {
   const a = document.activeElement;
-  if (a && a.matches && a.matches('input') && (S.tab === 'add' || S.editSeason)) {
-    renderSeasons();
-    const dl = $('#players'); if (dl) dl.innerHTML = knownPlayers().map(p => `<option value="${esc(p)}">`).join('');
-    return;
-  }
+  if (a && a.matches && a.matches('input, select') && a.closest('#main')) { renderSeasons(); return; }
   render();
 }
 
 /* ---------- demo data (only with ?demo) ---------- */
 function loadDemo() {
+  S.register = true;
   S.seasons = [
     { id: 'demo-a', name: 'Autumn 2026', start: '2026-11-01', end: '2026-12-15', plannedRounds: 6, bestOf: 4 },
     { id: 'demo-c', name: 'Christmas 2026', start: '2026-12-16', end: '2027-01-15', plannedRounds: 4, bestOf: 3 },
     { id: 'demo-s', name: 'Spring 2027', start: '2027-01-16', end: '2027-04-30', plannedRounds: 15, bestOf: 10 },
   ];
-  const P = ['Example Player A', 'Example Player B', 'Example Player C', 'Example Player D'];
+  S.players = [
+    { id: 'p1', name: 'Example Player A', ids: ['KIDDIEIKA66'], active: true },
+    { id: 'p2', name: 'Example Player B', ids: ['DAADI'], active: true },
+    { id: 'p3', name: 'Example Player C', ids: ['EXAMPLE C'], active: true },
+    { id: 'p4', name: 'Example Player D', ids: [], active: true },
+    { id: 'p5', name: 'Example Player E', ids: [], active: true },
+  ];
+  const cards = ['KIDDIEIKA66', 'DAADI', 'EXAMPLE C', 'EXAMPLE PLAYER D...'];
   const rnd = [[34, 29, 37, 31], [31, 33, 30, 36], [38, 27, 33, 32], [30, 35, 36, 28], [36, 31, 29, 34]];
   S.rounds = rnd.map((pts, i) => ({
     id: 'demo-r' + i, date: addDays('2026-11-04', i * 7), course: ['Pebble Beach', 'St Andrews', 'Kiawah', 'Valderrama', 'Royal Troon'][i],
-    scores: pts.map((p, j) => ({ player: P[j], hcp: [8, 14, 18, 22][j], gross: 72 + [8, 14, 18, 22][j] + (36 - p), points: p })),
+    scores: pts.map((p, j) => ({ player: cards[j], card_name: cards[j], hcp: [8, 14, 18, 22][j], gross: 72 + [8, 14, 18, 22][j] + (36 - p), points: p })),
   }));
+  const t = today(), wd = new Date(t + 'T12:00:00').getDay();
+  const first = addDays(t, (2 - wd + 7) % 7); // next Tuesday (or today, if Tuesday)
+  S.events = [0, 7, 14, 21].map(n => ({ id: 'demo-e' + n, date: addDays(first, n), time: '19:30:00', location: 'Example golf centre, bays 3–4', notes: n ? '' : 'Shotgun start, four players per bay.' }));
+  S.attendance = [
+    { event_id: 'demo-e0', player_id: 'p2', status: 'yes' }, { event_id: 'demo-e0', player_id: 'p3', status: 'yes' },
+    { event_id: 'demo-e0', player_id: 'p4', status: 'no' }, { event_id: 'demo-e7', player_id: 'p2', status: 'yes' },
+  ];
   S.seasonId = 'demo-a';
 }
-function addDays(d, n) { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); }
 
 /* ---------- boot ---------- */
 (async () => {
@@ -620,7 +1074,7 @@ function addDays(d, n) { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDat
     S.session = session;
     if (changed) { S.signinMsg = null; loadMember(); }
   });
-  // Pick up rounds other players added while this tab sat in the background.
+  // Pick up answers and rounds others added while this tab sat in the background.
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(); });
 })();
 </script>
