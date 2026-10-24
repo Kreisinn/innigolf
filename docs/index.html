@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="is">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Trackman Winter League</title>
+<title>innigolf</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap">
 <style>
@@ -154,23 +154,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .rules { font-size: .92rem; color: var(--muted); max-width: 65ch; margin: 0; }
 details > summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .chip, .btn, nav.tabs button { transition: background .15s, color .15s, border-color .15s; } }
-@media (max-width: 560px) { .hide-sm { display: none; } h1 { font-size: 1.9rem; } }
+h1.brand { text-transform: none; font-size: 2.8rem; letter-spacing: -.01em; }
+@media (max-width: 560px) { .hide-sm { display: none; } h1, h1.brand { font-size: 2.2rem; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Trackman Winter League<small>Stableford standings, best rounds count</small></h1>
+    <h1 class="brand">innigolf<small>Punktakeppni í golfhermi – bestu hringirnir gilda</small></h1>
     <div class="account" id="account"></div>
   </header>
   <nav class="tabs" role="tablist" id="tabs">
-    <button role="tab" data-tab="next" id="tab-next">Next round</button>
-    <button role="tab" data-tab="standings" id="tab-standings">Standings</button>
-    <button role="tab" data-tab="add" id="tab-add">Add round</button>
-    <button role="tab" data-tab="rounds" id="tab-rounds">Rounds</button>
-    <button role="tab" data-tab="league" id="tab-league">League</button>
+    <button role="tab" data-tab="next" id="tab-next">Næsti hringur</button>
+    <button role="tab" data-tab="standings" id="tab-standings">Staðan</button>
+    <button role="tab" data-tab="add" id="tab-add">Skrá skor</button>
+    <button role="tab" data-tab="rounds" id="tab-rounds">Hringir</button>
+    <button role="tab" data-tab="league" id="tab-league">Deildin</button>
   </nav>
-  <div class="seasons" id="seasons" role="group" aria-label="Competition"></div>
+  <div class="seasons" id="seasons" role="group" aria-label="Mót"></div>
   <main id="main"></main>
 </div>
 
@@ -179,7 +180,9 @@ details > summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 <script src="standings.js"></script>
 <script>
 const CFG = window.LEAGUE_CONFIG || {};
-const DEMO = new URLSearchParams(location.search).has('demo');
+const PARAMS = new URLSearchParams(location.search);
+const DEMO = PARAMS.has('demo');
+const LOCALE = 'is-IS';
 
 const S = {
   sb: null, mode: 'loading', // loading | ready | setup | error
@@ -190,6 +193,8 @@ const S = {
   draft: null, photos: [], reading: false, readMsg: null, saveMsg: null,
   confirmDelete: null, editSeason: null, editPlayer: null, editEvent: null,
   signinMsg: null, signinBusy: false, busy: false, flash: null,
+  linkMsg: null, // result of answering from an email link
+  remindAudience: 'unanswered', reminding: false, remindMsg: null,
 };
 const canWrite = () => DEMO || !!S.member;
 const canEdit = () => DEMO || !!S.member?.is_admin;
@@ -199,12 +204,23 @@ const photoOn = () => !DEMO && CFG.photoReading !== false;
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
-const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch { return d; } };
-const fmtDateLong = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); } catch { return d; } };
-const fmtDay = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }); } catch { return d; } };
+// Icelandic dates written out by hand: not every browser ships Icelandic date names.
+const DAYS = ['sunnudagur', 'mánudagur', 'þriðjudagur', 'miðvikudagur', 'fimmtudagur', 'föstudagur', 'laugardagur'];
+const DAYS_SHORT = ['sun.', 'mán.', 'þri.', 'mið.', 'fim.', 'fös.', 'lau.'];
+const MONTHS = ['janúar', 'febrúar', 'mars', 'apríl', 'maí', 'júní', 'júlí', 'ágúst', 'september', 'október', 'nóvember', 'desember'];
+const MONTHS_SHORT = ['jan.', 'feb.', 'mar.', 'apr.', 'maí', 'jún.', 'júl.', 'ágú.', 'sep.', 'okt.', 'nóv.', 'des.'];
+const parts = d => { const x = new Date(d + 'T12:00:00'); return { wd: x.getDay(), day: x.getDate(), m: x.getMonth(), y: x.getFullYear() }; };
+const fmtDate = d => { const p = parts(d); return `${p.day}. ${MONTHS_SHORT[p.m]}`; };                          // 27. okt.
+const fmtDateLong = d => { const p = parts(d); return `${DAYS_SHORT[p.wd]} ${p.day}. ${MONTHS_SHORT[p.m]} ${p.y}`; }; // þri. 27. okt. 2026
+const fmtDay = d => { const p = parts(d); return `${DAYS[p.wd]} ${p.day}. ${MONTHS[p.m]}`; };                     // þriðjudagur 27. október
 const fmtTime = t => t ? String(t).slice(0, 5) : '';
+const fmtStamp = ts => { const x = new Date(ts); const pad = n => String(n).padStart(2, '0'); return `${DAYS_SHORT[x.getDay()]} ${x.getDate()}. ${MONTHS_SHORT[x.getMonth()]} kl. ${pad(x.getHours())}:${pad(x.getMinutes())}`; };
+const fmtDec = n => n.toFixed(1).replace('.', ',');
 const daysUntil = d => Math.round((new Date(d + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 86400000);
 const addDays = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+// Icelandic numbers ending in 1 (but not 11) take the singular: 1 dagur, 21 dagur, 11 dagar.
+const one = n => n % 10 === 1 && n % 100 !== 11;
+const plural = (n, sg, pl) => `${n} ${one(n) ? sg : pl}`;
 
 function newDraft() { return { id: null, date: today(), course: '', scores: [blankScore(), blankScore(), blankScore(), blankScore()] }; }
 function blankScore() { return { card: '', pick: '', hcp: '', gross: '', points: '' }; }
@@ -216,7 +232,7 @@ const toSeason = s => ({ name: s.name, start_date: s.start, end_date: s.end, pla
 const fromRound = r => ({ id: r.id, date: r.played_on, course: r.course, scores: r.scores || [], createdBy: r.created_by });
 const toRound = r => ({ played_on: r.date, course: r.course, scores: r.scores, updated_at: new Date().toISOString() });
 const fromPlayer = r => ({ id: r.id, name: r.name, ids: r.trackman_ids || [], active: r.active });
-const fromEvent = r => ({ id: r.id, date: r.event_date, time: r.start_time, location: r.location, notes: r.notes });
+const fromEvent = r => ({ id: r.id, date: r.event_date, time: r.start_time, location: r.location, notes: r.notes, remindedAt: r.reminded_at || null });
 const toEvent = e => ({ event_date: e.date, start_time: e.time || null, location: e.location, notes: e.notes });
 
 async function loadAll() {
@@ -303,7 +319,8 @@ function unmatchedCardNames() {
   }
   return [...m.values()].sort((a, b) => b.count - a.count);
 }
-const activePlayers = () => S.players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name));
+const activePlayers = () => S.players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name, LOCALE));
+const hasEmail = p => DEMO ? true : S.accounts.some(a => a.player_id === p.id);
 
 /* ---------- events ---------- */
 const activeEvent = () => nextEvent(S.events, today());
@@ -326,19 +343,19 @@ function render() {
   renderSeasons();
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
   const m = $('#main');
-  if (S.mode === 'setup') { m.innerHTML = `<div class="panel empty"><h2>Almost there</h2><p>This page isn't connected to its database yet. Fill in <b>config.js</b> with your Supabase project's URL and key (see the README), or <a href="?demo">look at the demo</a>.</p></div>`; return; }
-  if (S.mode === 'error') { m.innerHTML = `<div class="panel empty"><h2>Couldn't load the league</h2><p>Check your connection and reload. If it keeps happening, check the Supabase URL and key in config.js.</p></div>`; return; }
+  if (S.mode === 'setup') { m.innerHTML = `<div class="panel empty"><h2>Næstum tilbúið</h2><p>Síðan er ekki enn tengd gagnagrunni. Settu slóð og lykil Supabase-verkefnisins í <b>config.js</b> (sjá README), eða <a href="?demo">skoðaðu sýnishornið</a>.</p></div>`; return; }
+  if (S.mode === 'error') { m.innerHTML = `<div class="panel empty"><h2>Ekki tókst að sækja gögnin</h2><p>Athugaðu nettenginguna og endurhlaðaðu síðunni. Ef þetta gerist aftur skaltu athuga Supabase-slóðina og lykilinn í config.js.</p></div>`; return; }
   const view = { next: viewNext, standings: viewStandings, add: viewAdd, rounds: viewRounds, league: viewLeague }[S.tab] || viewNext;
   m.innerHTML = view();
 }
 
 function renderAccount() {
   const a = $('#account');
-  if (DEMO) { a.innerHTML = '<span class="pill">Demo with example data. Nothing is saved.</span>'; return; }
+  if (DEMO) { a.innerHTML = '<span class="pill">Sýnishorn með dæmagögnum. Ekkert er vistað.</span>'; return; }
   if (S.mode !== 'ready') { a.innerHTML = ''; return; }
-  if (!S.session) { a.innerHTML = `<button class="btn small" id="go-signin">Sign in</button>`; return; }
+  if (!S.session) { a.innerHTML = `<button class="btn small" id="go-signin">Skrá inn</button>`; return; }
   const who = playerById(S.member?.player_id)?.name || S.member?.name || S.session.user.email;
-  a.innerHTML = `<span class="muted">${esc(who)}${S.member?.is_admin ? ' · organiser' : ''}</span><button class="btn small" id="sign-out">Sign out</button>`;
+  a.innerHTML = `<span class="muted">${esc(who)}${S.member?.is_admin ? ' · umsjón' : ''}</span><button class="btn small" id="sign-out">Skrá út</button>`;
 }
 
 function renderSeasons() {
@@ -346,35 +363,36 @@ function renderSeasons() {
   const list = sortedSeasons();
   $('#seasons').innerHTML = list.length ? list.map(s => {
     const live = s.start <= t && t <= s.end;
-    return `<button class="chip" aria-pressed="${s.id === S.seasonId}" data-season="${esc(s.id)}">${live ? '<span class="live" title="In progress"></span>' : ''}${esc(s.name)}<small>${fmtDate(s.start)} – ${fmtDate(s.end)}</small></button>`;
-  }).join('') : (S.loaded ? '<span class="muted">No competitions yet. Add one under League.</span>' : '');
+    return `<button class="chip" aria-pressed="${s.id === S.seasonId}" data-season="${esc(s.id)}">${live ? '<span class="live" title="Stendur yfir"></span>' : ''}${esc(s.name)}<small>${fmtDate(s.start)} – ${fmtDate(s.end)}</small></button>`;
+  }).join('') : (S.loaded ? '<span class="muted">Engin mót enn. Bættu við móti undir Deildin.</span>' : '');
 }
 
 function signInPanel(reason) {
-  if (S.session && !S.member) return `<div class="panel empty"><h2>You're not on the league list yet</h2>
-    <p>You're signed in as <b>${esc(S.session.user.email)}</b>, but that address isn't registered. Ask the organiser to add it, then reload.</p>
-    <button class="btn" id="sign-out">Use a different email</button></div>`;
-  return `<div class="panel empty"><h2>Sign in to ${esc(reason)}</h2>
-    <p>Enter the email the organiser registered for you. We'll email you a sign-in link. No password needed.</p>
+  if (S.session && !S.member) return `<div class="panel empty"><h2>Netfangið er ekki á listanum</h2>
+    <p>Netfangið <b>${esc(S.session.user.email)}</b> er ekki skráð í deildina. Biddu umsjónarmann að bæta því við og endurhlaðaðu svo síðunni.</p>
+    <button class="btn" id="sign-out">Nota annað netfang</button></div>`;
+  return `<div class="panel empty"><h2>Skráðu þig inn til að ${esc(reason)}</h2>
+    <p>Sláðu inn netfangið sem umsjónarmaðurinn skráði. Við sendum þér innskráningarhlekk í tölvupósti; ekkert lykilorð þarf.</p>
     ${signInForm()}</div>`;
 }
 function signInForm() {
   return `<form class="signin" id="signin-form">
-      <input id="signin-email" type="email" autocomplete="email" placeholder="you@example.com" required>
-      <button class="btn primary" ${S.signinBusy ? 'disabled' : ''}>${S.signinBusy ? 'Sending…' : 'Email me a link'}</button>
+      <input id="signin-email" type="email" autocomplete="email" placeholder="netfang@dæmi.is" required>
+      <button class="btn primary" ${S.signinBusy ? 'disabled' : ''}>${S.signinBusy ? 'Sendi…' : 'Senda mér hlekk'}</button>
     </form>
     ${S.signinMsg ? `<div class="note ${S.signinMsg.kind}">${esc(S.signinMsg.text)}</div>` : ''}`;
 }
-const registerMissing = () => `<div class="panel empty"><h2>Database update needed</h2><p>Player registration and events need the update in <b>supabase/migrations/20261023_players_events.sql</b>. Run it in Supabase's SQL Editor, then reload.</p></div>`;
+const registerMissing = () => `<div class="panel empty"><h2>Uppfæra þarf gagnagrunninn</h2><p>Leikmannaskrá og golfkvöld þurfa uppfærsluna í <b>supabase/migrations/20261023_players_events.sql</b>. Keyrðu hana í SQL Editor í Supabase og endurhlaðaðu síðan.</p></div>`;
 
-/* ---------- Next round ---------- */
+/* ---------- Næsti hringur ---------- */
 function viewNext() {
-  if (!S.loaded) return `<div class="panel empty"><p>Loading…</p></div>`;
+  if (!S.loaded) return `<div class="panel empty"><p>Hleð…</p></div>`;
   if (!S.register) return registerMissing();
+  const banner = S.linkMsg ? `<div class="note ${S.linkMsg.kind}" role="status">${esc(S.linkMsg.text)}</div>` : '';
   const ev = activeEvent();
-  if (!ev) return `<div class="panel empty"><h2>No rounds scheduled</h2><p>${canEdit() ? 'Add the coming league nights under League.' : 'The organiser hasn’t added the next league night yet.'}</p>${canEdit() ? '<button class="btn primary" data-go="league">Add league nights</button>' : ''}</div>`;
+  if (!ev) return `<div class="stack">${banner}<div class="panel empty"><h2>Enginn hringur á dagskrá</h2><p>${canEdit() ? 'Bættu næstu golfkvöldum við undir Deildin.' : 'Umsjónarmaður hefur ekki sett inn næsta golfkvöld.'}</p>${canEdit() ? '<button class="btn primary" data-go="league">Bæta við golfkvöldum</button>' : ''}</div></div>`;
   const d = daysUntil(ev.date);
-  const soon = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
+  const soon = d === 0 ? 'Í dag' : d === 1 ? 'Á morgun' : `Eftir ${plural(d, 'dag', 'daga')}`;
   const me = myPlayerId();
   const mine = me ? answerOf(ev.id, me) : null;
   const players = activePlayers();
@@ -382,24 +400,25 @@ function viewNext() {
   const no = players.filter(p => answerOf(ev.id, p.id) === 'no');
   const none = players.filter(p => !answerOf(ev.id, p.id));
   let answerBlock;
-  if (me) answerBlock = `<div class="rsvp" role="group" aria-label="Your answer">
-      <button class="btn yes" data-rsvp="yes" data-ev="${esc(ev.id)}" data-pl="${esc(me)}" aria-pressed="${mine === 'yes'}" ${S.busy ? 'disabled' : ''}>${mine === 'yes' ? '✓ ' : ''}I'm coming</button>
-      <button class="btn no" data-rsvp="no" data-ev="${esc(ev.id)}" data-pl="${esc(me)}" aria-pressed="${mine === 'no'}" ${S.busy ? 'disabled' : ''}>${mine === 'no' ? '✕ ' : ''}Can't make it</button>
-      <span class="muted">${mine ? 'Tap again to clear your answer.' : 'Let the others know.'}</span>
+  if (me) answerBlock = `<div class="rsvp" role="group" aria-label="Svarið þitt">
+      <button class="btn yes" data-rsvp="yes" data-ev="${esc(ev.id)}" data-pl="${esc(me)}" aria-pressed="${mine === 'yes'}" ${S.busy ? 'disabled' : ''}>${mine === 'yes' ? '✓ ' : ''}Ég mæti</button>
+      <button class="btn no" data-rsvp="no" data-ev="${esc(ev.id)}" data-pl="${esc(me)}" aria-pressed="${mine === 'no'}" ${S.busy ? 'disabled' : ''}>${mine === 'no' ? '✕ ' : ''}Kemst ekki</button>
+      <span class="muted">${mine ? 'Ýttu aftur til að hreinsa svarið.' : 'Láttu hina vita.'}</span>
     </div>`;
-  else if (S.session && S.member) answerBlock = `<div class="note">Your sign-in isn't linked to a player yet. Ask the organiser to link it under League.</div>`;
-  else if (S.session) answerBlock = `<div class="note">You're signed in as ${esc(S.session.user.email)}, which isn't registered. Ask the organiser to add it.</div>`;
-  else answerBlock = `<div class="stack"><div class="muted">Sign in to say whether you're coming.</div>${signInForm()}</div>`;
+  else if (S.session && S.member) answerBlock = `<div class="note">Innskráningin þín er ekki tengd leikmanni. Biddu umsjónarmann að tengja hana undir Deildin.</div>`;
+  else if (S.session) answerBlock = `<div class="note">Netfangið ${esc(S.session.user.email)} er ekki skráð. Biddu umsjónarmann að bæta því við.</div>`;
+  else answerBlock = `<div class="stack"><div class="muted">Skráðu þig inn til að svara hvort þú mætir, eða notaðu hlekkina í áminningarpóstinum.</div>${signInForm()}</div>`;
 
-  const list = (arr, status) => arr.length ? `<ul>${arr.map(p => `<li class="${p.id === me ? 'me' : ''}"><span>${esc(p.name)}</span>${canEdit() ? `<span class="set"><button class="y" title="Mark ${esc(p.name)} as coming" aria-label="Mark ${esc(p.name)} as coming" data-rsvp="yes" data-ev="${esc(ev.id)}" data-pl="${esc(p.id)}" aria-pressed="${status === 'yes'}">✓</button><button class="n" title="Mark ${esc(p.name)} as not coming" aria-label="Mark ${esc(p.name)} as not coming" data-rsvp="no" data-ev="${esc(ev.id)}" data-pl="${esc(p.id)}" aria-pressed="${status === 'no'}">✕</button></span>` : ''}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">Nobody yet.</p>';
+  const list = (arr, status) => arr.length ? `<ul>${arr.map(p => `<li class="${p.id === me ? 'me' : ''}"><span>${esc(p.name)}</span>${canEdit() ? `<span class="set"><button class="y" title="Merkja að ${esc(p.name)} mæti" aria-label="Merkja að ${esc(p.name)} mæti" data-rsvp="yes" data-ev="${esc(ev.id)}" data-pl="${esc(p.id)}" aria-pressed="${status === 'yes'}">✓</button><button class="n" title="Merkja að ${esc(p.name)} komist ekki" aria-label="Merkja að ${esc(p.name)} komist ekki" data-rsvp="no" data-ev="${esc(ev.id)}" data-pl="${esc(p.id)}" aria-pressed="${status === 'no'}">✕</button></span>` : ''}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">Enginn enn.</p>';
 
   const later = S.events.filter(e => e.date >= today() && e.id !== ev.id).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
   return `<div class="stack">
+    ${banner}
     <div class="panel">
       <div class="hero">
         <span class="soon">${soon}</span>
         <p class="date">${esc(fmtDay(ev.date))}</p>
-        <div class="when">${ev.time ? `<b>${esc(fmtTime(ev.time))}</b>` : ''}${ev.time && ev.location ? ' · ' : ''}${ev.location ? esc(ev.location) : ''}</div>
+        <div class="when">${ev.time ? `<b>kl. ${esc(fmtTime(ev.time))}</b>` : ''}${ev.time && ev.location ? ' · ' : ''}${ev.location ? esc(ev.location) : ''}</div>
         ${ev.notes ? `<div>${esc(ev.notes)}</div>` : ''}
       </div>
       ${answerBlock}
@@ -407,142 +426,163 @@ function viewNext() {
     </div>
     <div class="panel">
       <div class="roster">
-        <section><h3><b class="num">${yes.length}</b> Coming</h3>${list(yes, 'yes')}</section>
-        <section><h3><b class="num">${no.length}</b> Not coming</h3>${list(no, 'no')}</section>
-        <section><h3><b class="num">${none.length}</b> No answer yet</h3>${list(none, null)}</section>
+        <section><h3><b class="num">${yes.length}</b> Mæta</h3>${list(yes, 'yes')}</section>
+        <section><h3><b class="num">${no.length}</b> Komast ekki</h3>${list(no, 'no')}</section>
+        <section><h3><b class="num">${none.length}</b> Hafa ekki svarað</h3>${list(none, null)}</section>
       </div>
-      ${players.length ? '' : `<p class="rules">No players are registered yet.${canEdit() ? ' Add them under League.' : ''}</p>`}
+      ${players.length ? '' : `<p class="rules">Engir leikmenn skráðir enn.${canEdit() ? ' Bættu þeim við undir Deildin.' : ''}</p>`}
     </div>
-    ${later.length ? `<div class="panel"><h2>Later rounds</h2><div class="later">${later.map(e => {
+    ${canEdit() ? viewReminder(ev, players, none) : ''}
+    ${later.length ? `<div class="panel"><h2>Næstu kvöld</h2><div class="later">${later.map(e => {
       const n = S.attendance.filter(a => a.event_id === e.id && a.status === 'yes').length;
       const a = me ? answerOf(e.id, me) : null;
-      return `<div><span><b>${esc(fmtDateLong(e.date))}</b> <span class="muted">${esc([fmtTime(e.time), e.location].filter(Boolean).join(' · '))}</span></span>
-        <span class="row start" style="gap:8px"><span class="muted num">${n} coming</span>${me ? `<span class="rsvp"><button class="btn small yes" data-rsvp="yes" data-ev="${esc(e.id)}" data-pl="${esc(me)}" aria-pressed="${a === 'yes'}">Coming</button><button class="btn small no" data-rsvp="no" data-ev="${esc(e.id)}" data-pl="${esc(me)}" aria-pressed="${a === 'no'}">Can't</button></span>` : ''}</span></div>`;
+      return `<div><span><b>${esc(fmtDateLong(e.date))}</b> <span class="muted">${esc([e.time ? 'kl. ' + fmtTime(e.time) : '', e.location].filter(Boolean).join(' · '))}</span></span>
+        <span class="row start" style="gap:8px"><span class="muted num">${n} ${one(n) ? 'mætir' : 'mæta'}</span>${me ? `<span class="rsvp"><button class="btn small yes" data-rsvp="yes" data-ev="${esc(e.id)}" data-pl="${esc(me)}" aria-pressed="${a === 'yes'}">Mæti</button><button class="btn small no" data-rsvp="no" data-ev="${esc(e.id)}" data-pl="${esc(me)}" aria-pressed="${a === 'no'}">Kemst ekki</button></span>` : ''}</span></div>`;
     }).join('')}</div></div>` : ''}
   </div>`;
 }
 
-/* ---------- Standings ---------- */
+// Organisers send a reminder email; each one carries personal "Ég mæti" / "Kemst ekki" links.
+function viewReminder(ev, players, none) {
+  const withEmail = players.filter(hasEmail);
+  const unanswered = none.filter(hasEmail);
+  const count = S.remindAudience === 'all' ? withEmail.length : unanswered.length;
+  return `<div class="panel">
+    <h2>Áminning í tölvupósti</h2>
+    <p class="rules">Sendir tölvupóst um golfkvöldið ${esc(fmtDateLong(ev.date))} með tveimur hlekkjum: <b>Ég mæti</b> og <b>Kemst ekki</b>. Leikmenn þurfa ekki að skrá sig inn til að svara.</p>
+    <div class="row start" role="radiogroup" aria-label="Viðtakendur">
+      <label class="check" for="ra-un"><input type="radio" name="remind-aud" id="ra-un" value="unanswered" ${S.remindAudience === 'unanswered' ? 'checked' : ''}> Þeir sem hafa ekki svarað (${unanswered.length})</label>
+      <label class="check" for="ra-all"><input type="radio" name="remind-aud" id="ra-all" value="all" ${S.remindAudience === 'all' ? 'checked' : ''}> Allir virkir leikmenn (${withEmail.length})</label>
+    </div>
+    <div class="row">
+      <span class="muted">${ev.remindedAt ? 'Síðast sent ' + esc(fmtStamp(ev.remindedAt)) + '.' : 'Engin áminning send enn.'}${players.length > withEmail.length ? ` ${plural(players.length - withEmail.length, 'leikmaður er', 'leikmenn eru')} án netfangs.` : ''}</span>
+      <button class="btn primary" id="send-reminder" data-ev="${esc(ev.id)}" ${S.reminding || !count ? 'disabled' : ''}>${S.reminding ? 'Sendi…' : `Senda á ${count}`}</button>
+    </div>
+    ${S.remindMsg ? `<div class="note ${S.remindMsg.kind}">${esc(S.remindMsg.text)}</div>` : ''}
+  </div>`;
+}
+
+/* ---------- Staðan ---------- */
 function viewStandings() {
   const season = currentSeason();
-  if (!season) return `<div class="panel empty"><h2>No competition selected</h2><p>${S.loaded ? 'Create the autumn, Christmas and spring competitions under League.' : 'Loading…'}</p></div>`;
+  if (!season) return `<div class="panel empty"><h2>Ekkert mót valið</h2><p>${S.loaded ? 'Búðu til haust-, jóla- og vormót undir Deildin.' : 'Hleð…'}</p></div>`;
   const st = computeStandings(season, S.rounds, S.metric, standingsOpts());
   const x = Number(season.plannedRounds) || 0;
   const pct = x ? Math.min(100, Math.round(st.roundCount / x * 100)) : 0;
   const head = `
     <div class="row">
       <div class="facts">
-        <div><span class="label">Rounds played</span><b class="num">${st.roundCount}${x ? ` / ${x}` : ''}</b></div>
-        <div><span class="label">Counting</span><b class="num">Best ${st.y}</b></div>
-        <div><span class="label">Players</span><b class="num">${st.rows.length}</b></div>
+        <div><span class="label">Hringir spilaðir</span><b class="num">${st.roundCount}${x ? ` / ${x}` : ''}</b></div>
+        <div><span class="label">Gilda</span><b class="num">Bestu ${st.y}</b></div>
+        <div><span class="label">Leikmenn</span><b class="num">${st.rows.length}</b></div>
       </div>
-      <div class="seg" role="group" aria-label="Ranking">
-        <button data-metric="points" aria-pressed="${S.metric === 'points'}">Stableford</button>
-        <button data-metric="gross" aria-pressed="${S.metric === 'gross'}">Gross</button>
+      <div class="seg" role="group" aria-label="Röðun">
+        <button data-metric="points" aria-pressed="${S.metric === 'points'}">Punktar</button>
+        <button data-metric="gross" aria-pressed="${S.metric === 'gross'}">Högg</button>
       </div>
     </div>
     ${x ? `<div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ''}`;
-  if (!st.rows.length) return `<div class="panel">${head}<div class="empty"><h2>No rounds yet</h2><p>Snap the Trackman scorecard after your first round of ${esc(season.name)} and add it here.</p><button class="btn primary" data-go="add">Add a round</button></div></div>`;
+  if (!st.rows.length) return `<div class="panel">${head}<div class="empty"><h2>Engir hringir enn</h2><p>Taktu mynd af Trackman-skorkortinu eftir fyrsta hringinn í ${esc(season.name)} og skráðu það hér.</p><button class="btn primary" data-go="add">Skrá skor</button></div></div>`;
   const unreg = st.rows.some(r => r.key.startsWith('card:')) && S.register;
   const rows = st.rows.map(r => `
     <tr class="${r.rank === 1 ? 'lead' : ''}">
       <td class="rank">${r.rank}</td>
-      <td class="player">${esc(r.name)}${S.register && r.key.startsWith('card:') ? ' <span class="pill">Not linked</span>' : ''}${!r.complete && S.metric === 'gross' ? ' <span class="pill">Needs ' + (st.y - r.counting.length) + '</span>' : ''}</td>
-      <td><div class="cards">${r.entries.map(e => e[S.metric] == null ? '' : `<span class="sc ${e.counts ? 'counts' : ''}" title="${fmtDateLong(e.date)}${e.counts ? '' : ' (dropped)'}">${e[S.metric]}</span>`).join('')}</div></td>
+      <td class="player">${esc(r.name)}${S.register && r.key.startsWith('card:') ? ' <span class="pill">Ekki tengt</span>' : ''}${!r.complete && S.metric === 'gross' ? ' <span class="pill">Vantar ' + (st.y - r.counting.length) + '</span>' : ''}</td>
+      <td><div class="cards">${r.entries.map(e => e[S.metric] == null ? '' : `<span class="sc ${e.counts ? 'counts' : ''}" title="${fmtDateLong(e.date)}${e.counts ? '' : ' (gildir ekki)'}">${e[S.metric]}</span>`).join('')}</div></td>
       <td class="r num hide-sm">${r.played}</td>
       <td class="r num hide-sm">${r.best ?? '–'}</td>
-      <td class="r num hide-sm">${r.avg == null ? '–' : r.avg.toFixed(1)}</td>
+      <td class="r num hide-sm">${r.avg == null ? '–' : fmtDec(r.avg)}</td>
       <td class="total num">${r.avg == null ? '–' : r.total}</td>
     </tr>`).join('');
   return `<div class="panel">${head}
     <div class="scroll"><table>
-      <thead><tr><th>#</th><th>Player</th><th>Rounds (counting highlighted)</th><th class="r hide-sm">Played</th><th class="r hide-sm">Best</th><th class="r hide-sm">Avg</th><th class="r">${S.metric === 'points' ? 'Best ' + st.y + ' pts' : 'Best ' + st.y + ' strokes'}</th></tr></thead>
+      <thead><tr><th>#</th><th>Leikmaður</th><th>Hringir (gildandi auðkenndir)</th><th class="r hide-sm">Spilað</th><th class="r hide-sm">Besti</th><th class="r hide-sm">Meðaltal</th><th class="r">${S.metric === 'points' ? 'Bestu ' + st.y + ', punktar' : 'Bestu ' + st.y + ', högg'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-    ${unreg ? `<div class="note">Names marked <b>Not linked</b> are Trackman IDs that aren't linked to a registered player yet.${canWrite() ? ' <button class="btn small" data-go="league">Link them</button>' : ''}</div>` : ''}
+    ${unreg ? `<div class="note">Nöfn merkt <b>Ekki tengt</b> eru Trackman-auðkenni sem eru ekki tengd skráðum leikmanni.${canWrite() ? ' <button class="btn small" data-go="league">Tengja</button>' : ''}</div>` : ''}
     <p class="rules">${S.metric === 'points'
-      ? `Ranked on the total Stableford points of each player's best ${st.y} rounds in ${esc(season.name)}. Ties are split on the best single counting round, then the next best. Struck-through scores are dropped.`
-      : `Ranked on the lowest average gross over each player's best ${st.y} rounds. Players with fewer than ${st.y} rounds sit below those with a full set.`}</p>
+      ? `Raðað eftir samanlögðum punktum úr ${st.y} bestu hringjum hvers leikmanns í ${esc(season.name)}. Séu leikmenn jafnir ræður besti einstaki hringurinn, síðan sá næstbesti. Yfirstrikuð skor gilda ekki.`
+      : `Raðað eftir lægsta meðaltali högga í ${st.y} bestu hringjunum. Leikmenn með færri en ${st.y} hringi raðast fyrir neðan þá sem hafa náð fullum fjölda.`}</p>
   </div>`;
 }
 
-/* ---------- Add round ---------- */
+/* ---------- Skrá skor ---------- */
 function playerSelect(i, pick) {
   const opts = activePlayers().map(p => `<option value="${esc(p.id)}" ${pick === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  return `<select id="s-${i}-pick" data-i="${i}" data-k="pick" class="${pick ? '' : 'unset'}" aria-label="Who is this">
-    <option value="" ${pick ? '' : 'selected'}>Choose player…</option>${opts}
-    <option value="guest" ${pick === 'guest' ? 'selected' : ''}>Guest (doesn't count)</option></select>`;
+  return `<select id="s-${i}-pick" data-i="${i}" data-k="pick" class="${pick ? '' : 'unset'}" aria-label="Hver er þetta">
+    <option value="" ${pick ? '' : 'selected'}>Veldu leikmann…</option>${opts}
+    <option value="guest" ${pick === 'guest' ? 'selected' : ''}>Gestur (gildir ekki)</option></select>`;
 }
 function viewAdd() {
-  if (!canWrite()) return signInPanel('add rounds');
+  if (!canWrite()) return signInPanel('skrá skor');
   const d = S.draft;
   const season = seasonForDate(S.seasons, d.date);
   const mapping = S.register && S.players.length > 0;
   const dupes = d.date ? S.rounds.filter(r => r.date === d.date && r.id !== d.id) : [];
   const photo = photoOn() ? `
     <div class="drop" id="drop">
-      <div><h2>1 · Scorecard photo</h2><div class="muted">Take a photo of the Trackman scorecard (or a screenshot). Claude reads the names, handicaps, gross and Stableford points. Check the numbers before saving.</div></div>
+      <div><h2>1 · Mynd af skorkorti</h2><div class="muted">Taktu mynd af Trackman-skorkortinu (eða skjámynd). Claude les nöfn, forgjöf, högg og punkta. Farðu yfir tölurnar áður en þú vistar.</div></div>
       <div class="row start">
-        <label class="btn" for="photo-input">Choose photos<input id="photo-input" type="file" accept="image/*" multiple hidden></label>
-        <button class="btn primary" id="read-btn" ${S.photos.length && !S.reading ? '' : 'disabled'}>${S.reading ? 'Reading scorecard…' : 'Read scorecard'}</button>
+        <label class="btn" for="photo-input">Velja myndir<input id="photo-input" type="file" accept="image/*" multiple hidden></label>
+        <button class="btn primary" id="read-btn" ${S.photos.length && !S.reading ? '' : 'disabled'}>${S.reading ? 'Les skorkort…' : 'Lesa skorkort'}</button>
       </div>
-      ${S.photos.length ? `<div class="thumbs">${S.photos.map(p => `<img src="${p.url}" alt="Scorecard photo">`).join('')}</div>` : ''}
+      ${S.photos.length ? `<div class="thumbs">${S.photos.map(p => `<img src="${p.url}" alt="Mynd af skorkorti">`).join('')}</div>` : ''}
       ${S.readMsg ? `<div class="note ${S.readMsg.kind}">${esc(S.readMsg.text)}</div>` : ''}
-    </div>` : (DEMO ? '<div class="note">Photo reading is off in the demo. Type a Trackman name such as KIDDIEIKA66 below to see it matched.</div>' : '');
+    </div>` : (DEMO ? '<div class="note">Myndlestur er óvirkur í sýnishorninu. Sláðu inn Trackman-nafn eins og KIDDIEIKA66 hér fyrir neðan til að sjá það parað við leikmann.</div>' : '');
   return `<div class="panel">
-    ${d.id ? `<div class="note">Editing the round from ${fmtDateLong(d.date)}. <button class="btn small" id="cancel-edit">Cancel</button></div>` : photo}
-    <h2>${d.id ? 'Round details' : (photo ? '2 · Check and save' : 'Enter the scores')}</h2>
+    ${d.id ? `<div class="note">Þú ert að breyta hringnum frá ${fmtDateLong(d.date)}. <button class="btn small" id="cancel-edit">Hætta við</button></div>` : photo}
+    <h2>${d.id ? 'Hringurinn' : (photo ? '2 · Yfirfara og vista' : 'Sláðu inn skorin')}</h2>
     <div class="grid2">
-      <label class="f" for="f-date">Date<input id="f-date" type="date" value="${esc(d.date)}"></label>
-      <label class="f" for="f-course">Course<input id="f-course" value="${esc(d.course)}" placeholder="e.g. Pebble Beach"></label>
+      <label class="f" for="f-date">Dagsetning<input id="f-date" type="date" value="${esc(d.date)}"></label>
+      <label class="f" for="f-course">Völlur<input id="f-course" value="${esc(d.course)}" placeholder="t.d. Pebble Beach"></label>
     </div>
-    <div class="note ${season ? 'ok' : 'warn'}">${season ? `Counts toward <b>${esc(season.name)}</b>.` : 'This date is outside every competition. It will be saved but not counted.'}${dupes.length ? ` A round on this date is already saved (${dupes.map(r => esc(r.course || 'no course')).join(', ')}).` : ''}</div>
+    <div class="note ${season ? 'ok' : 'warn'}">${season ? `Gildir í <b>${esc(season.name)}</b>.` : 'Þessi dagsetning er utan allra móta. Hringurinn vistast en gildir ekki.'}${dupes.length ? ` Hringur á þessum degi er þegar vistaður (${dupes.map(r => esc(r.course || 'enginn völlur')).join(', ')}).` : ''}</div>
     <div class="scroll"><table class="entry">
-      <thead><tr><th>Name on scorecard</th>${mapping ? '<th>Player</th>' : ''}<th class="r">Hcp</th><th class="r">Gross</th><th class="r">Points</th><th></th></tr></thead>
+      <thead><tr><th>Nafn á skorkorti</th>${mapping ? '<th>Leikmaður</th>' : ''}<th class="r">Forgj.</th><th class="r">Högg</th><th class="r">Punktar</th><th></th></tr></thead>
       <tbody>${d.scores.map((s, i) => `<tr>
-        <td class="card"><input id="s-${i}-card" data-i="${i}" data-k="card" value="${esc(s.card)}" placeholder="Trackman name" autocapitalize="characters"></td>
+        <td class="card"><input id="s-${i}-card" data-i="${i}" data-k="card" value="${esc(s.card)}" placeholder="Trackman-nafn" autocapitalize="characters"></td>
         ${mapping ? `<td>${playerSelect(i, s.pick)}</td>` : ''}
         <td class="n"><input id="s-${i}-hcp" data-i="${i}" data-k="hcp" inputmode="decimal" value="${esc(s.hcp)}"></td>
         <td class="n"><input id="s-${i}-gross" data-i="${i}" data-k="gross" inputmode="numeric" value="${esc(s.gross)}"></td>
         <td class="n"><input id="s-${i}-points" data-i="${i}" data-k="points" inputmode="numeric" value="${esc(s.points)}"></td>
-        <td><button class="btn small" data-remove="${i}" aria-label="Remove row">✕</button></td>
+        <td><button class="btn small" data-remove="${i}" aria-label="Fjarlægja línu">✕</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
-    ${mapping ? `<p class="rules">Registered Trackman IDs are matched automatically. When you pick a player for a new name, it's remembered for next time.</p>` : ''}
+    ${mapping ? `<p class="rules">Skráð Trackman-auðkenni parast sjálfkrafa. Þegar þú velur leikmann fyrir nýtt nafn er það munað næst.</p>` : ''}
     <div class="row">
-      <button class="btn" id="add-row">Add player</button>
+      <button class="btn" id="add-row">Bæta við leikmanni</button>
       <div class="row">
         ${S.saveMsg ? `<span style="color:${S.saveMsg.kind === 'warn' ? 'var(--flag)' : 'var(--muted)'}">${esc(S.saveMsg.text)}</span>` : ''}
-        <button class="btn primary" id="save-round" ${S.busy ? 'disabled' : ''}>${d.id ? 'Save changes' : 'Save round'}</button>
+        <button class="btn primary" id="save-round" ${S.busy ? 'disabled' : ''}>${d.id ? 'Vista breytingar' : 'Vista hring'}</button>
       </div>
     </div>
   </div>`;
 }
 
-/* ---------- Rounds ---------- */
+/* ---------- Hringir ---------- */
 function viewRounds() {
   const season = currentSeason();
   const list = [...S.rounds].filter(r => !season || (r.date >= season.start && r.date <= season.end)).sort((a, b) => b.date.localeCompare(a.date));
   const outside = S.rounds.filter(r => !seasonForDate(S.seasons, r.date)).length;
-  if (!list.length) return `<div class="panel empty"><h2>No rounds in ${esc(season?.name || 'this competition')}</h2><button class="btn primary" data-go="add">Add a round</button></div>`;
+  if (!list.length) return `<div class="panel empty"><h2>Engir hringir í ${esc(season?.name || 'þessu móti')}</h2><button class="btn primary" data-go="add">Skrá skor</button></div>`;
   const idx = aliasIndex();
   return `<div class="panel">
-    <div class="row"><h2>${esc(season?.name || 'All rounds')} · ${list.length} round${list.length === 1 ? '' : 's'}</h2></div>
+    <div class="row"><h2>${esc(season?.name || 'Allir hringir')} · ${plural(list.length, 'hringur', 'hringir')}</h2></div>
     ${list.map(r => {
       const sc = [...(r.scores || [])].sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
       return `<div class="round">
         <div class="row"><div><b>${fmtDateLong(r.date)}</b> <span class="muted">${esc(r.course || '')}</span></div>
         ${canWrite() ? `<div class="row">${S.confirmDelete === r.id
-          ? `<span class="muted">Delete this round?</span><button class="btn small danger" data-del-yes="${esc(r.id)}">Delete</button><button class="btn small" data-del-no>Keep</button>`
-          : `<button class="btn small" data-edit="${esc(r.id)}">Edit</button><button class="btn small danger" data-del="${esc(r.id)}">Delete</button>`}</div>` : ''}</div>
-        <div class="who">${sc.map(s => { const p = s.guest ? null : playerForScore(s, idx); return `<span>${esc(p?.name || s.card_name || s.player)}${s.guest ? ' <span class="pill">Guest</span>' : ''} <b>${s.points ?? '–'}</b><span class="muted"> pts · ${s.gross ?? '–'}</span></span>`; }).join('')}</div>
+          ? `<span class="muted">Eyða þessum hring?</span><button class="btn small danger" data-del-yes="${esc(r.id)}">Eyða</button><button class="btn small" data-del-no>Halda</button>`
+          : `<button class="btn small" data-edit="${esc(r.id)}">Breyta</button><button class="btn small danger" data-del="${esc(r.id)}">Eyða</button>`}</div>` : ''}</div>
+        <div class="who">${sc.map(s => { const p = s.guest ? null : playerForScore(s, idx); return `<span>${esc(p?.name || s.card_name || s.player)}${s.guest ? ' <span class="pill">Gestur</span>' : ''} <b>${s.points ?? '–'}</b><span class="muted"> pkt · ${s.gross ?? '–'} högg</span></span>`; }).join('')}</div>
       </div>`;
     }).join('')}
-    ${outside ? `<p class="rules">${outside} saved round${outside === 1 ? ' falls' : 's fall'} outside every competition's dates.</p>` : ''}
+    ${outside ? `<p class="rules">${outside} ${one(outside) ? 'vistaður hringur er' : 'vistaðir hringir eru'} utan dagsetninga allra móta.</p>` : ''}
   </div>`;
 }
 
-/* ---------- League: players, events, competitions ---------- */
+/* ---------- Deildin: leikmenn, golfkvöld, mót ---------- */
 function viewLeague() {
   return `<div class="stack">${S.register ? viewPlayers() + viewEvents() : registerMissing()}${viewSettings()}</div>`;
 }
@@ -554,41 +594,41 @@ function viewPlayers() {
   const emailOf = p => S.accounts.find(a => a.player_id === p.id)?.email || '';
   const adminOf = p => !!S.accounts.find(a => a.player_id === p.id)?.is_admin;
   const form = e ? `<div class="panel">
-      <h2>${e.id ? 'Edit ' + esc(e.name || 'player') : 'Register a player'}</h2>
+      <h2>${e.id ? 'Breyta: ' + esc(e.name || 'leikmaður') : 'Skrá leikmann'}</h2>
       <div class="grid2">
-        <label class="f" for="p-name">Name<input id="p-name" value="${esc(e.name)}" placeholder="e.g. Jón Ingi"></label>
-        <label class="f" for="p-ids">Trackman IDs<input id="p-ids" value="${esc(e.ids)}" placeholder="e.g. KIDDIEIKA66, JONINGI"></label>
-        <label class="f" for="p-email">Sign-in email (optional)<input id="p-email" type="email" value="${esc(e.email)}" placeholder="Needed to answer and add rounds"></label>
+        <label class="f" for="p-name">Nafn<input id="p-name" value="${esc(e.name)}" placeholder="t.d. Jón Ingi Björnsson"></label>
+        <label class="f" for="p-ids">Trackman-auðkenni<input id="p-ids" value="${esc(e.ids)}" placeholder="t.d. KIDDIEIKA66, JONINGI"></label>
+        <label class="f" for="p-email">Netfang til innskráningar (valfrjálst)<input id="p-email" type="email" value="${esc(e.email)}" placeholder="Þarf fyrir áminningar og innskráningu"></label>
       </div>
       <div class="row start">
-        <label class="check" for="p-admin"><input id="p-admin" type="checkbox" ${e.admin ? 'checked' : ''}> Organiser (can manage players, events and competitions)</label>
-        <label class="check" for="p-active"><input id="p-active" type="checkbox" ${e.active ? 'checked' : ''}> Active this winter</label>
+        <label class="check" for="p-admin"><input id="p-admin" type="checkbox" ${e.admin ? 'checked' : ''}> Umsjónarmaður (sér um leikmenn, golfkvöld og mót)</label>
+        <label class="check" for="p-active"><input id="p-active" type="checkbox" ${e.active ? 'checked' : ''}> Virkur í vetur</label>
       </div>
-      <p class="rules">Trackman IDs are the names this player appears under on scorecards. Separate several with commas. Long names cut off with "..." on the card still match.</p>
+      <p class="rules">Trackman-auðkenni eru nöfnin sem leikmaðurinn birtist undir á skorkortum. Aðskildu mörg með kommum. Löng nöfn sem styttast með „...“ á kortinu parast samt.</p>
       <div class="row"><span id="p-msg" style="color:var(--flag)"></span><div class="row">
-        ${e.id ? (S.confirmDelete === 'player:' + e.id ? `<span class="muted">Remove ${esc(e.name)}? Their scores stay but won't be linked.</span><button class="btn danger" id="p-del-yes">Remove</button>` : `<button class="btn danger" id="p-del">Remove</button>`) : ''}
-        <button class="btn" id="p-cancel">Cancel</button><button class="btn primary" id="p-save" ${S.busy ? 'disabled' : ''}>Save</button></div></div>
+        ${e.id ? (S.confirmDelete === 'player:' + e.id ? `<span class="muted">Fjarlægja ${esc(e.name)}? Skorin haldast en verða ekki tengd.</span><button class="btn danger" id="p-del-yes">Fjarlægja</button>` : `<button class="btn danger" id="p-del">Fjarlægja</button>`) : ''}
+        <button class="btn" id="p-cancel">Hætta við</button><button class="btn primary" id="p-save" ${S.busy ? 'disabled' : ''}>Vista</button></div></div>
     </div>` : '';
-  const players = [...S.players].sort((a, b) => (b.active - a.active) || a.name.localeCompare(b.name));
+  const players = [...S.players].sort((a, b) => (b.active - a.active) || a.name.localeCompare(b.name, LOCALE));
   return `${form}<div class="panel">
-    <div class="row"><h2>Players · ${S.players.filter(p => p.active).length}</h2>${canEdit() && !e ? '<button class="btn" id="p-new">Register a player</button>' : ''}</div>
+    <div class="row"><h2>Leikmenn · ${S.players.filter(p => p.active).length}</h2>${canEdit() && !e ? '<button class="btn" id="p-new">Skrá leikmann</button>' : ''}</div>
     ${players.length ? `<div class="scroll"><table>
-      <thead><tr><th>Name</th><th>Trackman IDs</th>${canEdit() && !DEMO ? '<th class="hide-sm">Sign-in email</th>' : ''}<th class="r hide-sm">Rounds</th><th></th></tr></thead>
+      <thead><tr><th>Nafn</th><th>Trackman-auðkenni</th>${canEdit() && !DEMO ? '<th class="hide-sm">Netfang</th>' : ''}<th class="r hide-sm">Hringir</th><th></th></tr></thead>
       <tbody>${players.map(p => `<tr>
-        <td class="player">${esc(p.name)}${p.active ? '' : ' <span class="pill">Inactive</span>'}${adminOf(p) ? ' <span class="pill">Organiser</span>' : ''}</td>
-        <td><div class="tms">${p.ids.length ? p.ids.map(t => `<span class="tm">${esc(t)}</span>`).join('') : '<span class="muted">None yet</span>'}</div></td>
-        ${canEdit() && !DEMO ? `<td class="hide-sm">${emailOf(p) ? esc(emailOf(p)) : '<span class="muted">No sign-in</span>'}</td>` : ''}
+        <td class="player">${esc(p.name)}${p.active ? '' : ' <span class="pill">Óvirkur</span>'}${adminOf(p) ? ' <span class="pill">Umsjón</span>' : ''}</td>
+        <td><div class="tms">${p.ids.length ? p.ids.map(t => `<span class="tm">${esc(t)}</span>`).join('') : '<span class="muted">Ekkert enn</span>'}</div></td>
+        ${canEdit() && !DEMO ? `<td class="hide-sm">${emailOf(p) ? esc(emailOf(p)) : '<span class="muted">Ekkert netfang</span>'}</td>` : ''}
         <td class="r num hide-sm">${roundsFor(p)}</td>
-        <td class="r">${canEdit() ? `<button class="btn small" data-eplayer="${esc(p.id)}">Edit</button>` : ''}</td>
-      </tr>`).join('')}</tbody></table></div>` : `<p class="muted" style="margin:0">No players registered yet.</p>`}
+        <td class="r">${canEdit() ? `<button class="btn small" data-eplayer="${esc(p.id)}">Breyta</button>` : ''}</td>
+      </tr>`).join('')}</tbody></table></div>` : `<p class="muted" style="margin:0">Engir leikmenn skráðir enn.</p>`}
   </div>
   ${unmatched.length ? `<div class="panel">
-    <h2>Scorecard names to link</h2>
-    <p class="rules">These names appear on saved scorecards but don't belong to a registered player. Link each one once; past and future rounds then count for that player.</p>
+    <h2>Nöfn á skorkortum sem þarf að tengja</h2>
+    <p class="rules">Þessi nöfn birtast á vistuðum skorkortum en tilheyra engum skráðum leikmanni. Tengdu hvert þeirra einu sinni; þá gilda fyrri og síðari hringir fyrir þann leikmann.</p>
     <div class="scroll"><table><tbody>${unmatched.map((u, i) => `<tr>
-      <td><span class="tm">${esc(u.name)}</span></td><td class="muted num hide-sm">${u.count} score${u.count === 1 ? '' : 's'}</td>
-      <td><select id="link-${i}" aria-label="Player for ${esc(u.name)}"><option value="">Choose player…</option>${activePlayers().map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></td>
-      <td class="r"><button class="btn small" data-link="${i}" data-card="${esc(u.name)}">Link</button></td></tr>`).join('')}</tbody></table></div>
+      <td><span class="tm">${esc(u.name)}</span></td><td class="muted num hide-sm">${u.count} skor</td>
+      <td><select id="link-${i}" aria-label="Leikmaður fyrir ${esc(u.name)}"><option value="">Veldu leikmann…</option>${activePlayers().map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></td>
+      <td class="r"><button class="btn small" data-link="${i}" data-card="${esc(u.name)}">Tengja</button></td></tr>`).join('')}</tbody></table></div>
   </div>` : ''}`;
 }
 
@@ -599,26 +639,26 @@ function viewEvents() {
   const past = S.events.filter(x => x.date < t).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
   const count = id => S.attendance.filter(a => a.event_id === id && a.status === 'yes').length;
   const row = x => `<tr><td class="player">${esc(fmtDateLong(x.date))}</td><td class="num">${esc(fmtTime(x.time)) || '<span class="muted">–</span>'}</td><td>${esc(x.location)}</td><td class="r num">${count(x.id)}</td>
-    <td class="r">${canEdit() ? `<button class="btn small" data-eevent="${esc(x.id)}">Edit</button>` : ''}</td></tr>`;
+    <td class="r">${canEdit() ? `<button class="btn small" data-eevent="${esc(x.id)}">Breyta</button>` : ''}</td></tr>`;
   const form = e ? `<div class="panel">
-      <h2>${e.id ? 'Edit league night' : 'Add league nights'}</h2>
+      <h2>${e.id ? 'Breyta golfkvöldi' : 'Bæta við golfkvöldum'}</h2>
       <div class="grid2">
-        <label class="f" for="v-date">Date<input id="v-date" type="date" value="${esc(e.date)}"></label>
-        <label class="f" for="v-time">Starts<input id="v-time" type="time" value="${esc(fmtTime(e.time))}"></label>
-        <label class="f" for="v-loc">Where<input id="v-loc" value="${esc(e.location)}" placeholder="e.g. Golfhöllin, bay 3"></label>
-        ${e.id ? '' : `<label class="f" for="v-until">Repeat weekly until (optional)<input id="v-until" type="date" value="${esc(e.until)}"></label>`}
+        <label class="f" for="v-date">Dagsetning<input id="v-date" type="date" value="${esc(e.date)}"></label>
+        <label class="f" for="v-time">Hefst<input id="v-time" type="time" value="${esc(fmtTime(e.time))}"></label>
+        <label class="f" for="v-loc">Hvar<input id="v-loc" value="${esc(e.location)}" placeholder="t.d. GKG, básar 1–4"></label>
+        ${e.id ? '' : `<label class="f" for="v-until">Endurtaka vikulega til (valfrjálst)<input id="v-until" type="date" value="${esc(e.until)}"></label>`}
       </div>
-      <label class="f" for="v-notes">Note (optional)<input id="v-notes" value="${esc(e.notes)}" placeholder="e.g. Bring your own balls"></label>
+      <label class="f" for="v-notes">Athugasemd (valfrjálst)<input id="v-notes" value="${esc(e.notes)}" placeholder="t.d. Mætum 10 mínútum fyrr"></label>
       <div class="row"><span id="v-msg" style="color:var(--flag)"></span><div class="row">
-        ${e.id ? (S.confirmDelete === 'event:' + e.id ? `<span class="muted">Delete this night and its answers?</span><button class="btn danger" id="v-del-yes">Delete</button>` : `<button class="btn danger" id="v-del">Delete</button>`) : ''}
-        <button class="btn" id="v-cancel">Cancel</button><button class="btn primary" id="v-save" ${S.busy ? 'disabled' : ''}>Save</button></div></div>
+        ${e.id ? (S.confirmDelete === 'event:' + e.id ? `<span class="muted">Eyða þessu kvöldi og svörunum?</span><button class="btn danger" id="v-del-yes">Eyða</button>` : `<button class="btn danger" id="v-del">Eyða</button>`) : ''}
+        <button class="btn" id="v-cancel">Hætta við</button><button class="btn primary" id="v-save" ${S.busy ? 'disabled' : ''}>Vista</button></div></div>
     </div>` : '';
   return `${form}<div class="panel">
-    <div class="row"><h2>League nights</h2>${canEdit() && !e ? '<button class="btn" id="v-new">Add league nights</button>' : ''}</div>
-    ${upcoming.length ? `<div class="scroll"><table><thead><tr><th>Date</th><th>Starts</th><th>Where</th><th class="r">Coming</th><th></th></tr></thead><tbody>${upcoming.map(row).join('')}</tbody></table></div>`
-      : `<p class="muted" style="margin:0">No upcoming nights.${canEdit() ? ' Add one, or a weekly series, with the button above.' : ''}</p>`}
-    ${past.length ? `<details><summary>Past nights</summary><div class="scroll"><table><tbody>${past.map(row).join('')}</tbody></table></div></details>` : ''}
-    <p class="rules">The next night on or after today is shown on the Next round page.</p>
+    <div class="row"><h2>Golfkvöld</h2>${canEdit() && !e ? '<button class="btn" id="v-new">Bæta við golfkvöldum</button>' : ''}</div>
+    ${upcoming.length ? `<div class="scroll"><table><thead><tr><th>Dagsetning</th><th>Hefst</th><th>Hvar</th><th class="r">Mæta</th><th></th></tr></thead><tbody>${upcoming.map(row).join('')}</tbody></table></div>`
+      : `<p class="muted" style="margin:0">Engin væntanleg kvöld.${canEdit() ? ' Bættu við einu, eða vikulegri röð, með hnappinum hér fyrir ofan.' : ''}</p>`}
+    ${past.length ? `<details><summary>Liðin kvöld</summary><div class="scroll"><table><tbody>${past.map(row).join('')}</tbody></table></div></details>` : ''}
+    <p class="rules">Næsta kvöld frá og með deginum í dag birtist á síðunni Næsti hringur.</p>
   </div>`;
 }
 
@@ -626,33 +666,33 @@ function viewSettings() {
   const list = sortedSeasons();
   const e = S.editSeason;
   const form = e ? `<div class="panel">
-      <h2>${e.id ? 'Edit ' + esc(e.name) : 'New competition'}</h2>
+      <h2>${e.id ? 'Breyta: ' + esc(e.name) : 'Nýtt mót'}</h2>
       <div class="grid2">
-        <label class="f" for="e-name">Name<input id="e-name" value="${esc(e.name)}"></label>
-        <label class="f" for="e-start">Starts<input id="e-start" type="date" value="${esc(e.start)}"></label>
-        <label class="f" for="e-end">Ends<input id="e-end" type="date" value="${esc(e.end)}"></label>
-        <label class="f" for="e-planned">Rounds planned (x)<input id="e-planned" type="number" min="1" value="${esc(e.plannedRounds)}"></label>
-        <label class="f" for="e-best">Best rounds that count (y)<input id="e-best" type="number" min="1" value="${esc(e.bestOf)}"></label>
+        <label class="f" for="e-name">Heiti<input id="e-name" value="${esc(e.name)}" placeholder="t.d. Haustmót 2026"></label>
+        <label class="f" for="e-start">Hefst<input id="e-start" type="date" value="${esc(e.start)}"></label>
+        <label class="f" for="e-end">Lýkur<input id="e-end" type="date" value="${esc(e.end)}"></label>
+        <label class="f" for="e-planned">Fjöldi hringja (x)<input id="e-planned" type="number" min="1" value="${esc(e.plannedRounds)}"></label>
+        <label class="f" for="e-best">Bestu hringir sem gilda (y)<input id="e-best" type="number" min="1" value="${esc(e.bestOf)}"></label>
       </div>
       <div class="row"><span id="e-msg" style="color:var(--flag)"></span><div class="row">
-        ${e.id ? (S.confirmDelete === 'season:' + e.id ? `<span class="muted">Remove competition? Rounds stay saved.</span><button class="btn danger" id="e-del-yes">Remove</button>` : `<button class="btn danger" id="e-del">Remove</button>`) : ''}
-        <button class="btn" id="e-cancel">Cancel</button><button class="btn primary" id="e-save">Save</button></div></div>
+        ${e.id ? (S.confirmDelete === 'season:' + e.id ? `<span class="muted">Fjarlægja mótið? Hringirnir haldast vistaðir.</span><button class="btn danger" id="e-del-yes">Fjarlægja</button>` : `<button class="btn danger" id="e-del">Fjarlægja</button>`) : ''}
+        <button class="btn" id="e-cancel">Hætta við</button><button class="btn primary" id="e-save">Vista</button></div></div>
     </div>` : '';
   return `${form}<div class="panel">
-    <div class="row"><h2>Competitions this winter</h2>${canEdit() && !e ? '<button class="btn" id="e-new">New competition</button>' : ''}</div>
+    <div class="row"><h2>Mót vetrarins</h2>${canEdit() && !e ? '<button class="btn" id="e-new">Nýtt mót</button>' : ''}</div>
     <div class="scroll"><table>
-      <thead><tr><th>Competition</th><th>Dates</th><th class="r">Played</th><th class="r">Planned (x)</th><th class="r">Counting (y)</th><th></th></tr></thead>
+      <thead><tr><th>Mót</th><th>Dagsetningar</th><th class="r">Spilað</th><th class="r">Hringir (x)</th><th class="r">Gilda (y)</th><th></th></tr></thead>
       <tbody>${list.map(s => {
         const played = S.rounds.filter(r => r.date >= s.start && r.date <= s.end).length;
         return `<tr><td class="player">${esc(s.name)}</td><td class="num">${fmtDate(s.start)} – ${fmtDate(s.end)}</td><td class="r num">${played}</td><td class="r num">${s.plannedRounds ?? '–'}</td><td class="r num">${s.bestOf}</td>
-        <td class="r">${canEdit() ? `<button class="btn small" data-eseason="${esc(s.id)}">Edit</button>` : ''}</td></tr>`;
-      }).join('') || '<tr><td colspan="6" class="muted">None yet.</td></tr>'}</tbody>
+        <td class="r">${canEdit() ? `<button class="btn small" data-eseason="${esc(s.id)}">Breyta</button>` : ''}</td></tr>`;
+      }).join('') || '<tr><td colspan="6" class="muted">Ekkert enn.</td></tr>'}</tbody>
     </table></div>
-    <p class="rules">Each competition starts from zero. A round belongs to the competition whose dates include it. ${canEdit() ? '' : 'Only organisers can change these.'}</p>
+    <p class="rules">Hvert mót byrjar frá núlli. Hringur tilheyrir mótinu sem nær yfir dagsetningu hans.${canEdit() ? '' : ' Aðeins umsjónarmenn geta breytt þessu.'}</p>
   </div>`;
 }
 
-/* ---------- events ---------- */
+/* ---------- clicks ---------- */
 document.addEventListener('click', async ev => {
   const t = ev.target.closest('button, [data-go]');
   if (!t) return;
@@ -662,6 +702,7 @@ document.addEventListener('click', async ev => {
   if (t.dataset.season) { S.seasonId = t.dataset.season; render(); return; }
   if (t.dataset.metric) { S.metric = t.dataset.metric; render(); return; }
   if (t.dataset.rsvp) return setAnswer(t.dataset.ev, t.dataset.pl, t.dataset.rsvp);
+  if (t.id === 'send-reminder') return sendReminder(t.dataset.ev);
   if (t.id === 'sign-out') { await S.sb.auth.signOut(); return; }
   if (t.id === 'add-row') { S.draft.scores.push(blankScore()); render(); focus(`#s-${S.draft.scores.length - 1}-card`); return; }
   if (t.dataset.remove != null) { S.draft.scores.splice(Number(t.dataset.remove), 1); if (!S.draft.scores.length) S.draft.scores.push(blankScore()); render(); return; }
@@ -685,7 +726,7 @@ document.addEventListener('click', async ev => {
     S.confirmDelete = null; render(); return;
   }
   if (t.dataset.link != null) return linkCardName(t.dataset.card, $('#link-' + t.dataset.link)?.value);
-  // Players
+  // Leikmenn
   if (t.id === 'p-new') { S.editPlayer = { id: null, name: '', ids: '', email: '', admin: false, active: true }; S.confirmDelete = null; render(); focus('#p-name'); return; }
   if (t.dataset.eplayer) {
     const p = playerById(t.dataset.eplayer); const acc = S.accounts.find(a => a.player_id === p.id);
@@ -696,7 +737,7 @@ document.addEventListener('click', async ev => {
   if (t.id === 'p-save') return savePlayer();
   if (t.id === 'p-del') { S.confirmDelete = 'player:' + S.editPlayer.id; render(); return; }
   if (t.id === 'p-del-yes') return deletePlayer();
-  // League nights
+  // Golfkvöld
   if (t.id === 'v-new') {
     const last = [...S.events].sort((a, b) => b.date.localeCompare(a.date))[0];
     const base = last && last.date >= today() ? addDays(last.date, 7) : today();
@@ -708,7 +749,7 @@ document.addEventListener('click', async ev => {
   if (t.id === 'v-save') return saveEvent();
   if (t.id === 'v-del') { S.confirmDelete = 'event:' + S.editEvent.id; render(); return; }
   if (t.id === 'v-del-yes') return deleteEvent();
-  // Competitions
+  // Mót
   if (t.id === 'e-new') {
     const last = sortedSeasons().slice(-1)[0];
     S.editSeason = { id: null, name: '', start: last ? addDays(last.end, 1) : today(), end: '', plannedRounds: 8, bestOf: 5 }; render(); return;
@@ -720,7 +761,7 @@ document.addEventListener('click', async ev => {
   if (t.id === 'e-del-yes') {
     const id = S.editSeason.id;
     if (DEMO) S.seasons = S.seasons.filter(s => s.id !== id);
-    else { const { error } = await S.sb.from('seasons').delete().eq('id', id); if (error) { $('#e-msg').textContent = 'Could not remove it.'; return; } await loadAll(); }
+    else { const { error } = await S.sb.from('seasons').delete().eq('id', id); if (error) { $('#e-msg').textContent = 'Ekki tókst að fjarlægja mótið.'; return; } await loadAll(); }
     S.editSeason = null; S.confirmDelete = null; afterLoad(); return;
   }
 });
@@ -734,8 +775,8 @@ document.addEventListener('submit', async ev => {
   const { error } = await S.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
   S.signinBusy = false;
   S.signinMsg = error
-    ? { kind: 'warn', text: /rate/i.test(error.message) ? 'Too many sign-in emails were sent recently. Wait a few minutes and try again.' : 'Could not send the email. Check the address and try again.' }
-    : { kind: 'ok', text: `Check ${email} for a sign-in link. Open it on this device.` };
+    ? { kind: 'warn', text: /rate/i.test(error.message) ? 'Of margir innskráningarpóstar hafa verið sendir nýlega. Bíddu í nokkrar mínútur og reyndu aftur.' : 'Ekki tókst að senda póstinn. Athugaðu netfangið og reyndu aftur.' }
+    : { kind: 'ok', text: `Athugaðu póstinn á ${email} og opnaðu hlekkinn í þessu tæki.` };
   render();
 });
 
@@ -761,6 +802,7 @@ document.addEventListener('change', ev => {
   if (el.id === 'photo-input') addPhotos(el.files);
   if (el.id === 'p-admin') S.editPlayer.admin = el.checked;
   if (el.id === 'p-active') S.editPlayer.active = el.checked;
+  if (el.name === 'remind-aud') { S.remindAudience = el.value; S.remindMsg = null; render(); }
   // Typing a Trackman name picks the registered player it belongs to.
   if (el.dataset.k === 'card') {
     const row = S.draft.scores[Number(el.dataset.i)];
@@ -774,12 +816,12 @@ document.addEventListener('drop', ev => { const d = ev.target.closest?.('#drop')
 
 function focus(sel) { requestAnimationFrame(() => $(sel)?.focus()); }
 
-/* ---------- attendance ---------- */
+/* ---------- mæting ---------- */
 async function setAnswer(eventId, playerId, status) {
   if (!eventId || !playerId || S.busy) return;
   const current = answerOf(eventId, playerId);
   const clear = current === status; // tapping the same answer again clears it
-  S.flash = null;
+  S.flash = null; S.linkMsg = null;
   if (DEMO) {
     S.attendance = S.attendance.filter(a => !(a.event_id === eventId && a.player_id === playerId));
     if (!clear) S.attendance.push({ event_id: eventId, player_id: playerId, status });
@@ -791,13 +833,51 @@ async function setAnswer(eventId, playerId, status) {
     : S.sb.from('attendance').upsert({ event_id: eventId, player_id: playerId, status, updated_at: new Date().toISOString() }, { onConflict: 'event_id,player_id' }).select();
   const { data, error } = await q;
   S.busy = false;
-  if (error || !data?.length) { console.warn(error); S.flash = 'Your answer wasn’t saved. Sign in again and retry.'; render(); return; }
+  if (error || !data?.length) { console.warn(error); S.flash = 'Svarið vistaðist ekki. Skráðu þig inn aftur og reyndu á ný.'; render(); return; }
   S.attendance = S.attendance.filter(a => !(a.event_id === eventId && a.player_id === playerId));
   if (!clear) S.attendance.push({ event_id: eventId, player_id: playerId, status });
   render();
 }
 
-/* ---------- photo ---------- */
+// Answering from the reminder email: the link carries a signed token, so no sign-in is needed.
+// The answer is only recorded once this script runs, so mail scanners that open links don't answer.
+async function answerFromLink() {
+  const token = PARAMS.get('svar'), s = PARAMS.get('s');
+  if (!token || !['ja', 'nei'].includes(s)) return;
+  history.replaceState(null, '', location.pathname);
+  S.linkMsg = { kind: '', text: 'Skrái svarið…' }; render();
+  const { data, error } = await S.sb.functions.invoke('rsvp', { body: { token, status: s === 'ja' ? 'yes' : 'no' } });
+  if (error || !data?.ok) {
+    let msg = 'Ekki tókst að skrá svarið úr tölvupóstinum. Skráðu þig inn og svaraðu hér.';
+    try { const b = await error?.context?.json(); if (b?.error) msg = b.error; } catch {}
+    S.linkMsg = { kind: 'warn', text: msg };
+  } else {
+    const first = String(data.name || '').split(' ')[0];
+    S.linkMsg = { kind: 'ok', text: `Takk${first ? ' ' + first : ''}! Svarið þitt fyrir golfkvöldið ${fmtDate(data.event_date)} er skráð: ${data.status === 'yes' ? 'Ég mæti' : 'Kemst ekki'}.` };
+    await loadAll();
+  }
+  S.tab = 'next'; render();
+}
+
+async function sendReminder(eventId) {
+  if (S.reminding) return;
+  S.remindMsg = null;
+  if (DEMO) { S.remindMsg = { kind: 'ok', text: 'Í sýnishorninu er enginn póstur sendur.' }; render(); return; }
+  S.reminding = true; render();
+  const { data, error } = await S.sb.functions.invoke('send-reminders', { body: { event_id: eventId, audience: S.remindAudience } });
+  S.reminding = false;
+  if (error) {
+    let msg = 'Ekki tókst að senda áminninguna.';
+    try { const b = await error.context.json(); if (b?.error) msg = b.error; } catch {}
+    S.remindMsg = { kind: 'warn', text: msg };
+  } else {
+    S.remindMsg = { kind: data.failed ? 'warn' : 'ok', text: `Áminning send á ${plural(data.sent, 'leikmann', 'leikmenn')}.${data.failed ? ` ${data.failed} ${one(data.failed) ? 'sending mistókst' : 'sendingar mistókust'}.` : ''}` };
+    await loadAll();
+  }
+  render();
+}
+
+/* ---------- myndir ---------- */
 function addPhotos(files) {
   const imgs = [...(files || [])].filter(f => f.type.startsWith('image/'));
   if (!imgs.length) return;
@@ -817,22 +897,22 @@ async function toJpegBase64(file) {
   return c.toDataURL('image/jpeg', 0.85).split(',')[1];
 }
 
-/* ---------- Claude reads the scorecard (via the read-scorecard function) ---------- */
+/* ---------- Claude les skorkortið (read-scorecard) ---------- */
 async function readScorecard() {
   if (!S.photos.length) return;
-  S.reading = true; S.readMsg = { kind: '', text: 'Reading the scorecard. This can take up to a minute.' }; render();
+  S.reading = true; S.readMsg = { kind: '', text: 'Les skorkortið. Það getur tekið allt að mínútu.' }; render();
   try {
     let images;
     try { images = await Promise.all(S.photos.map(async p => ({ media_type: 'image/jpeg', data: await toJpegBase64(p.file) }))); }
-    catch { throw { friendly: 'That photo could not be opened. Try a JPEG or PNG.' }; }
+    catch { throw { friendly: 'Ekki tókst að opna myndina. Prófaðu JPEG eða PNG.' }; }
     const { data, error } = await S.sb.functions.invoke('read-scorecard', { body: { images } });
     if (error) {
-      let msg = 'The photo reader is not available. Enter the scores by hand.';
+      let msg = 'Myndlesarinn er ekki tiltækur. Sláðu skorin inn handvirkt.';
       try { const b = await error.context.json(); if (b?.error) msg = b.error; } catch {}
       throw { friendly: msg };
     }
     const ps = Array.isArray(data?.players) ? data.players : [];
-    if (!ps.length) throw { friendly: 'No scores could be read from that photo. Try a sharper, straight-on photo, or type them in.' };
+    if (!ps.length) throw { friendly: 'Engin skor fundust á myndinni. Prófaðu skýrari mynd tekna beint að kortinu, eða sláðu skorin inn.' };
     const clean = v => (v === null || v === undefined || v === '') ? '' : String(v);
     const idx = aliasIndex();
     S.draft.scores = ps.map(p => {
@@ -841,32 +921,32 @@ async function readScorecard() {
     });
     if (data.course && !S.draft.course) S.draft.course = String(data.course);
     if (/^\d{4}-\d{2}-\d{2}$/.test(data.date || '')) S.draft.date = data.date;
-    const unsure = Array.isArray(data.uncertain) && data.uncertain.length ? ' Check: ' + data.uncertain.join('; ') + '.' : '';
-    const missing = S.draft.scores.some(s => s.points === '') ? ' Some Stableford points were missing on the card; fill them in.' : '';
+    const unsure = Array.isArray(data.uncertain) && data.uncertain.length ? ' Athugaðu: ' + data.uncertain.join('; ') + '.' : '';
+    const missing = S.draft.scores.some(s => s.points === '') ? ' Punkta vantaði á kortið fyrir suma; fylltu þá inn.' : '';
     const unlinked = S.register && S.players.length ? S.draft.scores.filter(s => !s.pick).length : 0;
-    const link = unlinked ? ` ${unlinked} name${unlinked === 1 ? ' isn’t' : 's aren’t'} linked to a player yet; choose who ${unlinked === 1 ? 'it is' : 'they are'}.` : '';
-    S.readMsg = { kind: unsure || missing || link ? 'warn' : 'ok', text: `Found ${ps.length} player${ps.length === 1 ? '' : 's'}. Check every number against the card before saving.${link}${unsure}${missing}` };
+    const link = unlinked ? (one(unlinked) ? ` ${unlinked} nafn er ekki tengt leikmanni; veldu hver það er.` : ` ${unlinked} nöfn eru ekki tengd leikmönnum; veldu hverjir það eru.`) : '';
+    S.readMsg = { kind: unsure || missing || link ? 'warn' : 'ok', text: `Fann ${plural(ps.length, 'leikmann', 'leikmenn')}. Berðu allar tölur saman við kortið áður en þú vistar.${link}${unsure}${missing}` };
   } catch (e) {
     console.warn(e);
-    S.readMsg = { kind: 'warn', text: e?.friendly || 'Reading failed. Try again, or enter the scores by hand.' };
+    S.readMsg = { kind: 'warn', text: e?.friendly || 'Lestur mistókst. Reyndu aftur eða sláðu skorin inn handvirkt.' };
   }
   S.reading = false; render();
 }
 
-/* ---------- saving rounds ---------- */
+/* ---------- vista hringi ---------- */
 async function saveRound() {
   const d = S.draft;
   const mapping = S.register && S.players.length > 0;
   const rows = d.scores.filter(s => String(s.card).trim() || s.pick && s.pick !== 'guest');
   const fail = text => { S.saveMsg = { kind: 'warn', text }; render(); };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return fail('Pick the date of the round.');
-  if (!rows.length) return fail('Add at least one player.');
-  if (mapping && rows.some(s => !s.pick)) return fail('Choose who each scorecard name is, or mark them as a guest.');
-  if (rows.some(s => num(s.points) == null && num(s.gross) == null)) return fail('Every player needs points or a gross score.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return fail('Veldu dagsetningu hringsins.');
+  if (!rows.length) return fail('Bættu við að minnsta kosti einum leikmanni.');
+  if (mapping && rows.some(s => !s.pick)) return fail('Veldu hver hvert nafn á skorkortinu er, eða merktu sem gest.');
+  if (rows.some(s => num(s.points) == null && num(s.gross) == null)) return fail('Hver leikmaður þarf punkta eða högg.');
   const ids = rows.map(s => s.pick).filter(p => p && p !== 'guest');
-  if (new Set(ids).size !== ids.length) return fail('A player is listed twice.');
+  if (new Set(ids).size !== ids.length) return fail('Leikmaður er skráður tvisvar.');
   const cards = rows.map(s => normCardName(s.card)).filter(Boolean);
-  if (!mapping && new Set(cards).size !== cards.length) return fail('A player is listed twice.');
+  if (!mapping && new Set(cards).size !== cards.length) return fail('Leikmaður er skráður tvisvar.');
 
   const scores = rows.map(s => {
     const card = String(s.card).trim();
@@ -887,7 +967,7 @@ async function saveRound() {
   } else {
     const q = d.id ? S.sb.from('rounds').update(toRound(round)).eq('id', d.id).select() : S.sb.from('rounds').insert(toRound(round)).select();
     const { data, error } = await q;
-    if (error || !data?.length) { S.busy = false; console.warn(error); return fail(error ? 'Could not save. Check your connection and try again.' : 'Not saved: your account may not be allowed to change rounds.'); }
+    if (error || !data?.length) { S.busy = false; console.warn(error); return fail(error ? 'Ekki tókst að vista. Athugaðu nettenginguna og reyndu aftur.' : 'Ekki vistað: aðgangurinn þinn má ekki breyta hringjum.'); }
     for (const s of learn) {
       const { data: ok, error: e2 } = await S.sb.rpc('add_trackman_id', { p_player: s.pick, p_card_name: s.card });
       if (e2 || ok === false) clash.push(s.card);
@@ -898,7 +978,7 @@ async function saveRound() {
   const season = seasonForDate(S.seasons, d.date);
   S.photos.forEach(p => URL.revokeObjectURL(p.url));
   S.photos = []; S.readMsg = null; S.draft = newDraft();
-  S.saveMsg = { kind: clash.length ? 'warn' : 'ok', text: clash.length ? `Round saved. ${clash.join(', ')} already belongs to another player, so it wasn't added to the register.` : 'Round saved.' };
+  S.saveMsg = { kind: clash.length ? 'warn' : 'ok', text: clash.length ? `Hringurinn var vistaður. ${clash.join(', ')} tilheyrir öðrum leikmanni og var ekki bætt við skrána.` : 'Hringurinn var vistaður.' };
   if (season && !clash.length) { S.seasonId = season.id; S.tab = 'standings'; }
   render();
 }
@@ -911,19 +991,19 @@ async function linkCardName(card, playerId) {
   await loadAll();
 }
 
-/* ---------- saving players (organisers) ---------- */
+/* ---------- vista leikmenn (umsjón) ---------- */
 async function savePlayer() {
   const e = S.editPlayer;
   const msg = t => { const m = $('#p-msg'); if (m) m.textContent = t; };
   const name = String(e.name).trim();
   const ids = [...new Set(String(e.ids).split(',').map(normCardName).filter(Boolean))];
   const email = String(e.email).trim().toLowerCase();
-  if (!name) return msg('Give the player a name.');
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return msg('Check the email address.');
+  if (!name) return msg('Gefðu leikmanninum nafn.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return msg('Athugaðu netfangið.');
   const taken = ids.find(t => { const p = aliasIndex().get(t); return p && p.id !== e.id && p.ids.map(normCardName).includes(t); });
-  if (taken) return msg(`${taken} already belongs to ${aliasIndex().get(taken).name}.`);
+  if (taken) return msg(`${taken} tilheyrir þegar ${aliasIndex().get(taken).name}.`);
   const meEmail = S.session?.user?.email?.toLowerCase();
-  if (!DEMO && e.origEmail && e.origEmail.toLowerCase() === meEmail && (!e.admin || email !== meEmail)) return msg('You can’t remove your own organiser access or change your own email here.');
+  if (!DEMO && e.origEmail && e.origEmail.toLowerCase() === meEmail && (!e.admin || email !== meEmail)) return msg('Þú getur ekki fjarlægt eigin umsjónarréttindi eða breytt eigin netfangi hér.');
   if (DEMO) {
     if (e.id) Object.assign(playerById(e.id), { name, ids, active: e.active });
     else S.players.push({ id: 'demo-p' + Date.now(), name, ids, active: e.active });
@@ -933,7 +1013,7 @@ async function savePlayer() {
   const body = { name, trackman_ids: ids, active: !!e.active };
   const q = e.id ? S.sb.from('players').update(body).eq('id', e.id).select() : S.sb.from('players').insert(body).select();
   const { data, error } = await q;
-  if (error || !data?.length) { S.busy = false; render(); return msg('Not saved. Only organisers can register players.'); }
+  if (error || !data?.length) { S.busy = false; render(); return msg('Ekki vistað. Aðeins umsjónarmenn geta skráð leikmenn.'); }
   const pid = data[0].id;
   // Sign-in email lives in members (never public).
   let accErr = null;
@@ -945,7 +1025,7 @@ async function savePlayer() {
   }
   S.busy = false;
   await Promise.all([loadAll(), loadAccounts()]);
-  if (accErr) { console.warn(accErr); S.editPlayer = { ...e, id: pid }; render(); return msg(/duplicate|unique/i.test(accErr.message) ? 'That email is already linked to another player.' : 'Player saved, but the sign-in email wasn’t.'); }
+  if (accErr) { console.warn(accErr); S.editPlayer = { ...e, id: pid }; render(); return msg(/duplicate|unique/i.test(accErr.message) ? 'Þetta netfang er þegar tengt öðrum leikmanni.' : 'Leikmaðurinn var vistaður en netfangið ekki.'); }
   S.editPlayer = null; render();
 }
 
@@ -954,23 +1034,23 @@ async function deletePlayer() {
   if (DEMO) { S.players = S.players.filter(p => p.id !== id); S.attendance = S.attendance.filter(a => a.player_id !== id); }
   else {
     const acc = S.accounts.find(a => a.player_id === id);
-    if (acc && acc.email.toLowerCase() === S.session?.user?.email?.toLowerCase()) { $('#p-msg').textContent = 'You can’t remove yourself.'; return; }
+    if (acc && acc.email.toLowerCase() === S.session?.user?.email?.toLowerCase()) { $('#p-msg').textContent = 'Þú getur ekki fjarlægt eigin aðgang.'; return; }
     if (acc) await S.sb.from('members').delete().eq('email', acc.email);
     const { error } = await S.sb.from('players').delete().eq('id', id);
-    if (error) { $('#p-msg').textContent = 'Could not remove the player.'; return; }
+    if (error) { $('#p-msg').textContent = 'Ekki tókst að fjarlægja leikmanninn.'; return; }
     await Promise.all([loadAll(), loadAccounts()]);
   }
   S.editPlayer = null; S.confirmDelete = null; render();
 }
 
-/* ---------- saving league nights (organisers) ---------- */
+/* ---------- vista golfkvöld (umsjón) ---------- */
 async function saveEvent() {
   const e = S.editEvent;
   const msg = t => { $('#v-msg').textContent = t; };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return msg('Pick a date.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return msg('Veldu dagsetningu.');
   let dates = [e.date];
   if (!e.id && e.until) {
-    if (e.until < e.date) return msg('"Repeat until" is before the first date.');
+    if (e.until < e.date) return msg('„Endurtaka til“ er á undan fyrstu dagsetningunni.');
     dates = [];
     for (let d = e.date; d <= e.until && dates.length < 40; d = addDays(d, 7)) dates.push(d);
   }
@@ -986,35 +1066,35 @@ async function saveEvent() {
     : S.sb.from('events').insert(dates.map(d => toEvent({ date: d, ...base }))).select();
   const { data, error } = await q;
   S.busy = false;
-  if (error || !data?.length) { render(); return msg('Not saved. Only organisers can plan league nights.'); }
+  if (error || !data?.length) { render(); return msg('Ekki vistað. Aðeins umsjónarmenn geta skipulagt golfkvöld.'); }
   S.editEvent = null; await loadAll();
 }
 
 async function deleteEvent() {
   const id = S.editEvent.id;
   if (DEMO) { S.events = S.events.filter(x => x.id !== id); S.attendance = S.attendance.filter(a => a.event_id !== id); }
-  else { const { error } = await S.sb.from('events').delete().eq('id', id); if (error) { $('#v-msg').textContent = 'Could not delete it.'; return; } await loadAll(); }
+  else { const { error } = await S.sb.from('events').delete().eq('id', id); if (error) { $('#v-msg').textContent = 'Ekki tókst að eyða kvöldinu.'; return; } await loadAll(); }
   S.editEvent = null; S.confirmDelete = null; render();
 }
 
-/* ---------- saving competitions (organisers) ---------- */
+/* ---------- vista mót (umsjón) ---------- */
 async function saveSeason() {
   const e = S.editSeason;
   const msg = t => { $('#e-msg').textContent = t; };
   const s = { id: e.id, name: String(e.name).trim(), start: e.start, end: e.end, plannedRounds: Number(e.plannedRounds) || null, bestOf: Number(e.bestOf) };
-  if (!s.name) return msg('Give it a name.');
-  if (!s.start || !s.end || s.end < s.start) return msg('Check the dates.');
-  if (!(s.bestOf >= 1)) return msg('Counting rounds must be at least 1.');
-  if (s.plannedRounds && s.bestOf > s.plannedRounds) return msg('Counting rounds cannot exceed planned rounds.');
+  if (!s.name) return msg('Gefðu mótinu heiti.');
+  if (!s.start || !s.end || s.end < s.start) return msg('Athugaðu dagsetningarnar.');
+  if (!(s.bestOf >= 1)) return msg('Gildandi hringir verða að vera að minnsta kosti 1.');
+  if (s.plannedRounds && s.bestOf > s.plannedRounds) return msg('Gildandi hringir geta ekki verið fleiri en fjöldi hringja.');
   const clash = S.seasons.find(x => x.id !== e.id && x.start <= s.end && s.start <= x.end);
-  if (clash) return msg(`Dates overlap ${clash.name}.`);
+  if (clash) return msg(`Dagsetningar skarast við ${clash.name}.`);
   if (DEMO) {
     if (e.id) S.seasons = S.seasons.map(x => x.id === e.id ? s : x);
     else { s.id = 'demo-s-' + Date.now(); S.seasons.push(s); S.seasonId = s.id; }
   } else {
     const q = e.id ? S.sb.from('seasons').update(toSeason(s)).eq('id', e.id).select() : S.sb.from('seasons').insert(toSeason(s)).select();
     const { data, error } = await q;
-    if (error || !data?.length) return msg('Not saved. Only organisers can change competitions.');
+    if (error || !data?.length) return msg('Ekki vistað. Aðeins umsjónarmenn geta breytt mótum.');
     if (!e.id) S.seasonId = data[0].id;
     await loadAll();
   }
@@ -1028,22 +1108,22 @@ function renderKeepFocus() {
   render();
 }
 
-/* ---------- demo data (only with ?demo) ---------- */
+/* ---------- sýnishorn (aðeins með ?demo) ---------- */
 function loadDemo() {
   S.register = true;
   S.seasons = [
-    { id: 'demo-a', name: 'Autumn 2026', start: '2026-11-01', end: '2026-12-15', plannedRounds: 6, bestOf: 4 },
-    { id: 'demo-c', name: 'Christmas 2026', start: '2026-12-16', end: '2027-01-15', plannedRounds: 4, bestOf: 3 },
-    { id: 'demo-s', name: 'Spring 2027', start: '2027-01-16', end: '2027-04-30', plannedRounds: 15, bestOf: 10 },
+    { id: 'demo-a', name: 'Haustmót 2026', start: '2026-11-01', end: '2026-12-15', plannedRounds: 6, bestOf: 4 },
+    { id: 'demo-c', name: 'Jólamót 2026', start: '2026-12-16', end: '2027-01-15', plannedRounds: 4, bestOf: 3 },
+    { id: 'demo-s', name: 'Vormót 2027', start: '2027-01-16', end: '2027-04-30', plannedRounds: 15, bestOf: 10 },
   ];
   S.players = [
-    { id: 'p1', name: 'Example Player A', ids: ['KIDDIEIKA66'], active: true },
-    { id: 'p2', name: 'Example Player B', ids: ['DAADI'], active: true },
-    { id: 'p3', name: 'Example Player C', ids: ['EXAMPLE C'], active: true },
-    { id: 'p4', name: 'Example Player D', ids: [], active: true },
-    { id: 'p5', name: 'Example Player E', ids: [], active: true },
+    { id: 'p1', name: 'Leikmaður A (dæmi)', ids: ['KIDDIEIKA66'], active: true },
+    { id: 'p2', name: 'Leikmaður B (dæmi)', ids: ['DAADI'], active: true },
+    { id: 'p3', name: 'Leikmaður C (dæmi)', ids: ['DAEMI C'], active: true },
+    { id: 'p4', name: 'Leikmaður D (dæmi)', ids: [], active: true },
+    { id: 'p5', name: 'Leikmaður E (dæmi)', ids: [], active: true },
   ];
-  const cards = ['KIDDIEIKA66', 'DAADI', 'EXAMPLE C', 'EXAMPLE PLAYER D...'];
+  const cards = ['KIDDIEIKA66', 'DAADI', 'DAEMI C', 'LEIKMAÐUR D (DÆ...'];
   const rnd = [[34, 29, 37, 31], [31, 33, 30, 36], [38, 27, 33, 32], [30, 35, 36, 28], [36, 31, 29, 34]];
   S.rounds = rnd.map((pts, i) => ({
     id: 'demo-r' + i, date: addDays('2026-11-04', i * 7), course: ['Pebble Beach', 'St Andrews', 'Kiawah', 'Valderrama', 'Royal Troon'][i],
@@ -1051,7 +1131,7 @@ function loadDemo() {
   }));
   const t = today(), wd = new Date(t + 'T12:00:00').getDay();
   const first = addDays(t, (2 - wd + 7) % 7); // next Tuesday (or today, if Tuesday)
-  S.events = [0, 7, 14, 21].map(n => ({ id: 'demo-e' + n, date: addDays(first, n), time: '19:30:00', location: 'Example golf centre, bays 3–4', notes: n ? '' : 'Shotgun start, four players per bay.' }));
+  S.events = [0, 7, 14, 21].map(n => ({ id: 'demo-e' + n, date: addDays(first, n), time: '17:00:00', location: 'Golfhermir (dæmi), básar 1–4', notes: n ? '' : 'Mætum 10 mínútum fyrr.', remindedAt: null }));
   S.attendance = [
     { event_id: 'demo-e0', player_id: 'p2', status: 'yes' }, { event_id: 'demo-e0', player_id: 'p3', status: 'yes' },
     { event_id: 'demo-e0', player_id: 'p4', status: 'no' }, { event_id: 'demo-e7', player_id: 'p2', status: 'yes' },
@@ -1059,7 +1139,7 @@ function loadDemo() {
   S.seasonId = 'demo-a';
 }
 
-/* ---------- boot ---------- */
+/* ---------- ræsing ---------- */
 (async () => {
   if (DEMO) { loadDemo(); S.mode = 'ready'; S.loaded = true; render(); return; }
   if (!CFG.supabaseUrl || !CFG.supabaseAnonKey || !window.supabase) { S.mode = 'setup'; render(); return; }
@@ -1069,6 +1149,7 @@ function loadDemo() {
   S.session = data.session;
   S.mode = 'ready';
   await Promise.all([loadAll(), loadMember()]);
+  answerFromLink();
   S.sb.auth.onAuthStateChange((_event, session) => {
     const changed = (session?.user?.id || null) !== (S.session?.user?.id || null);
     S.session = session;

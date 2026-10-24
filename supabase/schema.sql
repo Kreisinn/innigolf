@@ -84,9 +84,9 @@ create policy "see own membership" on public.members for select to authenticated
 -- The three competitions for winter 2026-27. Edit numbers here or later in the page.
 insert into public.seasons (name, start_date, end_date, planned_rounds, best_of)
 select * from (values
-  ('Autumn 2026',    date '2026-11-01', date '2026-12-15',  6,  4),
-  ('Christmas 2026', date '2026-12-16', date '2027-01-15',  4,  3),
-  ('Spring 2027',    date '2027-01-16', date '2027-04-30', 15, 10)
+  ('Haustmót 2026',    date '2026-11-01', date '2026-12-15',  6,  4),
+  ('Jólamót 2026', date '2026-12-16', date '2027-01-15',  4,  3),
+  ('Vormót 2027',    date '2027-01-16', date '2027-04-30', 15, 10)
 ) v(name, start_date, end_date, planned_rounds, best_of)
 where not exists (select 1 from public.seasons);
 

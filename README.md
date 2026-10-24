@@ -1,4 +1,4 @@
-# Trackman Winter League
+# innigolf
 
 A small website for an indoor golf league: snap the Trackman scorecard after each round, and the standings rank every player on their best **y** Stableford rounds out of the **x** played. The winter is split into three competitions (autumn, Christmas, spring), and each one starts from zero.
 
@@ -17,9 +17,9 @@ Try it without any setup: open `docs/index.html?demo` (or `https://<you>.github.
 
    | Competition | Dates | Rounds planned (x) | Best that count (y) |
    |---|---|---|---|
-   | Autumn 2026 | 1 Nov – 15 Dec | 6 | 4 |
-   | Christmas 2026 | 16 Dec – 15 Jan | 4 | 3 |
-   | Spring 2027 | 16 Jan – 30 Apr | 15 | 10 |
+   | Haustmót 2026 | 1 Nov – 15 Dec | 6 | 4 |
+   | Jólamót 2026 | 16 Dec – 15 Jan | 4 | 3 |
+   | Vormót 2027 | 16 Jan – 30 Apr | 15 | 10 |
 
    You can change these later on the page's **League** tab.
 
@@ -30,23 +30,23 @@ Try it without any setup: open `docs/index.html?demo` (or `https://<you>.github.
 ### 2. Put the page on GitHub Pages
 
 1. Fill in `docs/config.js` with the URL and key from step 1.4. (Both are meant to be public; the access rules protect the data.)
-2. Create a repository on GitHub (e.g. `winter-league`) and push this folder to it:
+2. Create a repository on GitHub (e.g. `innigolf`) and push this folder to it:
 
    ```bash
    git init && git add . && git commit -m "Trackman Winter League"
    ```
 
    ```bash
-   git branch -M main && git remote add origin https://github.com/<you>/winter-league.git && git push -u origin main
+   git branch -M main && git remote add origin https://github.com/<you>/innigolf.git && git push -u origin main
    ```
 
-3. On GitHub, open **Settings → Pages**, set **Source: Deploy from a branch**, branch **main**, folder **/docs**, and save. After a minute the site is at `https://<you>.github.io/winter-league/`.
+3. On GitHub, open **Settings → Pages**, set **Source: Deploy from a branch**, branch **main**, folder **/docs**, and save. After a minute the site is at `https://<you>.github.io/innigolf/`.
 
 ### 3. Turn on email sign-in
 
 Players sign in with a link emailed to them (no passwords).
 
-1. In Supabase, open **Authentication → URL Configuration**. Set **Site URL** to your GitHub Pages address (e.g. `https://<you>.github.io/winter-league/`) and add the same address under **Redirect URLs**.
+1. In Supabase, open **Authentication → URL Configuration**. Set **Site URL** to your GitHub Pages address (e.g. `https://<you>.github.io/innigolf/`) and add the same address under **Redirect URLs**.
 2. Email sign-in is on by default (**Authentication → Sign In / Providers → Email**).
 
 Supabase's built-in email sender only sends a few emails per hour. That's enough for a league, since people stay signed in on their phone. If it ever gets in the way, connect a free email service under **Authentication → Emails → SMTP Settings** (Resend and Brevo both have free plans).
@@ -77,6 +77,23 @@ Without this step everything works; players type the scores in by hand. With it,
    The project ref is the `abcdefghijkl` part of your Supabase URL.
 
 The function checks that the caller is signed in and on the members list before it reads anything, so strangers can't spend your API credit. It uses Claude Opus 5.5 with Anthropic's automatic fallback switched on: if a safety check ever declined a photo, the request is retried on another Claude model instead of failing. If you skip this step, set `photoReading: false` in `docs/config.js` to hide the photo box.
+
+### 5. Reminder emails (optional)
+
+Organisers can send a reminder from the **Næsti hringur** page. Each player gets an email with two buttons, **Ég mæti** and **Kemst ekki**. Clicking one opens the site and records the answer without signing in. The links are signed and only answer for that player and that night. The answer is recorded by the page's script, so email scanners that open links don't answer for anyone.
+
+Mail is sent through [Brevo](https://www.brevo.com) (free plan: 300 emails a day; no domain of your own needed):
+
+1. Create a free Brevo account. Under **Senders, Domains & Dedicated IPs → Senders**, add and verify the address the reminders should come from (for example your own address).
+2. Under **SMTP & API → API Keys**, create an API key.
+3. In Supabase, open **Edge Functions → Secrets** and add:
+   - `BREVO_API_KEY`: the key from step 2
+   - `REMINDER_FROM_EMAIL`: the verified sender address from step 1
+   - optionally `REMINDER_FROM_NAME` (default "innigolf") and `SITE_URL` (default `https://kreisinn.github.io/innigolf/`)
+
+The functions are `supabase/functions/send-reminders` (organisers only) and `supabase/functions/rsvp` (deployed with JWT verification off, because players aren't signed in when they click). Deploy them with `supabase functions deploy send-reminders` and `supabase functions deploy rsvp --no-verify-jwt`.
+
+The sign-in emails come from Supabase and are in English by default. To translate them, edit **Authentication → Emails → Templates → Magic Link** in Supabase.
 
 ## Running the league
 
