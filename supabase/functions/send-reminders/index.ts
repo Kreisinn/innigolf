@@ -42,7 +42,9 @@ Deno.serve(async (req) => {
 
   let body: { event_id?: string; audience?: string };
   try { body = await req.json(); } catch { return reply(400, { error: "Ógild beiðni." }); }
-  const onlyUnanswered = body.audience !== "all";
+  // "me" sends a single test email to the organiser who asks for it.
+  const testOnly = body.audience === "me";
+  const onlyUnanswered = body.audience === "unanswered";
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data: event } = await db.from("events").select("*").eq("id", body.event_id ?? "").maybeSingle();
@@ -56,11 +58,13 @@ Deno.serve(async (req) => {
   const emailOf = new Map((members ?? []).map((m) => [m.player_id, m.email]));
   const recipients = (players ?? [])
     .filter((p) => emailOf.has(p.id) && (!onlyUnanswered || !answered.has(p.id)))
-    .map((p) => ({ ...p, email: emailOf.get(p.id)! }));
+    .map((p) => ({ ...p, email: emailOf.get(p.id)! }))
+    .filter((p) => !testOnly || p.email.toLowerCase() === (user.email ?? "").toLowerCase());
+  if (testOnly && !recipients.length) return reply(400, { error: "Netfangið þitt er ekki tengt virkum leikmanni." });
 
   const when = `${onDay(event.event_date)}${event.start_time ? ` kl. ${String(event.start_time).slice(0, 5)}` : ""}`;
   const where = event.location ? `. Staður: ${event.location}` : "";
-  const subject = `Golfkvöld ${when} – mætir þú?`;
+  const subject = `${testOnly ? "[Prufa] " : ""}Golfkvöld ${when} – mætir þú?`;
 
   let sent = 0, failed = 0;
   for (const p of recipients) {
@@ -93,6 +97,6 @@ ${event.notes ? `<p>${esc(event.notes)}</p>` : ""}
     else { failed++; console.error("Brevo", res.status, await res.text()); }
   }
 
-  if (sent) await db.from("events").update({ reminded_at: new Date().toISOString() }).eq("id", event.id);
+  if (sent && !testOnly) await db.from("events").update({ reminded_at: new Date().toISOString() }).eq("id", event.id);
   return reply(200, { sent, failed, total: recipients.length });
 });

@@ -456,7 +456,10 @@ function viewReminder(ev, players, none) {
     </div>
     <div class="row">
       <span class="muted">${ev.remindedAt ? 'Síðast sent ' + esc(fmtStamp(ev.remindedAt)) + '.' : 'Engin áminning send enn.'}${players.length > withEmail.length ? ` ${plural(players.length - withEmail.length, 'leikmaður er', 'leikmenn eru')} án netfangs.` : ''}</span>
-      <button class="btn primary" id="send-reminder" data-ev="${esc(ev.id)}" ${S.reminding || !count ? 'disabled' : ''}>${S.reminding ? 'Sendi…' : `Senda á ${count}`}</button>
+      <span class="row start" style="gap:8px">
+        <button class="btn" id="send-test" data-ev="${esc(ev.id)}" ${S.reminding ? 'disabled' : ''}>Senda prufu á mig</button>
+        <button class="btn primary" id="send-reminder" data-ev="${esc(ev.id)}" ${S.reminding || !count ? 'disabled' : ''}>${S.reminding ? 'Sendi…' : `Senda á ${count}`}</button>
+      </span>
     </div>
     ${S.remindMsg ? `<div class="note ${S.remindMsg.kind}">${esc(S.remindMsg.text)}</div>` : ''}
   </div>`;
@@ -702,7 +705,8 @@ document.addEventListener('click', async ev => {
   if (t.dataset.season) { S.seasonId = t.dataset.season; render(); return; }
   if (t.dataset.metric) { S.metric = t.dataset.metric; render(); return; }
   if (t.dataset.rsvp) return setAnswer(t.dataset.ev, t.dataset.pl, t.dataset.rsvp);
-  if (t.id === 'send-reminder') return sendReminder(t.dataset.ev);
+  if (t.id === 'send-reminder') return sendReminder(t.dataset.ev, S.remindAudience);
+  if (t.id === 'send-test') return sendReminder(t.dataset.ev, 'me');
   if (t.id === 'sign-out') { await S.sb.auth.signOut(); return; }
   if (t.id === 'add-row') { S.draft.scores.push(blankScore()); render(); focus(`#s-${S.draft.scores.length - 1}-card`); return; }
   if (t.dataset.remove != null) { S.draft.scores.splice(Number(t.dataset.remove), 1); if (!S.draft.scores.length) S.draft.scores.push(blankScore()); render(); return; }
@@ -859,19 +863,21 @@ async function answerFromLink() {
   S.tab = 'next'; render();
 }
 
-async function sendReminder(eventId) {
+async function sendReminder(eventId, audience) {
   if (S.reminding) return;
   S.remindMsg = null;
   if (DEMO) { S.remindMsg = { kind: 'ok', text: 'Í sýnishorninu er enginn póstur sendur.' }; render(); return; }
   S.reminding = true; render();
-  const { data, error } = await S.sb.functions.invoke('send-reminders', { body: { event_id: eventId, audience: S.remindAudience } });
+  const { data, error } = await S.sb.functions.invoke('send-reminders', { body: { event_id: eventId, audience } });
   S.reminding = false;
   if (error) {
     let msg = 'Ekki tókst að senda áminninguna.';
     try { const b = await error.context.json(); if (b?.error) msg = b.error; } catch {}
     S.remindMsg = { kind: 'warn', text: msg };
   } else {
-    S.remindMsg = { kind: data.failed ? 'warn' : 'ok', text: `Áminning send á ${plural(data.sent, 'leikmann', 'leikmenn')}.${data.failed ? ` ${data.failed} ${one(data.failed) ? 'sending mistókst' : 'sendingar mistókust'}.` : ''}` };
+    S.remindMsg = audience === 'me'
+      ? (data.sent ? { kind: 'ok', text: `Prufupóstur sendur á ${S.session?.user?.email}. Hlekkirnir í honum skrá raunverulegt svar þitt.` } : { kind: 'warn', text: 'Prufupósturinn fór ekki. Athugaðu stillingar Brevo.' })
+      : { kind: data.failed ? 'warn' : 'ok', text: `Áminning send á ${plural(data.sent, 'leikmann', 'leikmenn')}.${data.failed ? ` ${data.failed} ${one(data.failed) ? 'sending mistókst' : 'sendingar mistókust'}.` : ''}` };
     await loadAll();
   }
   render();
