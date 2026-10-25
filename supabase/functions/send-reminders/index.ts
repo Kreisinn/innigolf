@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
     const no = `${SITE_URL}?svar=${token}&s=nei`;
     const first = p.name.split(" ")[0];
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#15211a;max-width:520px">
+<p style="margin:0 0 20px"><a href="${SITE_URL}"><img src="${SITE_URL}email-logo.png" width="170" alt="innigolf" style="display:block;border:0;height:auto;width:170px"></a></p>
 <p>Hæ ${esc(first)},</p>
 <p>Næsta golfkvöld er <b>${esc(when)}</b>${esc(where)}.</p>
 ${event.notes ? `<p>${esc(event.notes)}</p>` : ""}

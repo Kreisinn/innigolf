@@ -4,8 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>innigolf</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d6f46">
+<meta name="apple-mobile-web-app-title" content="innigolf">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap">
 <style>
 /* Layout: one column; the next league night first, scorecard-like tables after. */
 :root {
@@ -154,14 +159,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .rules { font-size: .92rem; color: var(--muted); max-width: 65ch; margin: 0; }
 details > summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .chip, .btn, nav.tabs button { transition: background .15s, color .15s, border-color .15s; } }
-h1.brand { text-transform: none; font-size: 2.8rem; letter-spacing: -.01em; }
-@media (max-width: 560px) { .hide-sm { display: none; } h1, h1.brand { font-size: 2.2rem; } }
+h1.brand { text-transform: none; font: 600 3rem/1 Fredoka, "Arial Rounded MT Bold", sans-serif; letter-spacing: -.01em; color: var(--turf); }
+h1.brand small { font-family: var(--body); }
+/* The dots on the i's are golf balls. */
+.brand .i { position: relative; display: inline-block; }
+.brand .i svg { position: absolute; left: 50%; top: -.08em; width: .29em; height: .29em; transform: translateX(-50%); }
+.brand .wm { display: inline-block; padding-top: .14em; }
+@media (max-width: 560px) { .hide-sm { display: none; } h1 { font-size: 1.9rem; } h1.brand { font-size: 2.5rem; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1 class="brand">innigolf<small>Punktakeppni í golfhermi – bestu hringirnir gilda</small></h1>
+    <h1 class="brand"><span class="wm" role="img" aria-label="innigolf"><span class="i" aria-hidden="true">ı<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.8" fill="#fff" stroke="currentColor" stroke-width="2.2"/><g fill="#9cc4ad"><circle cx="7.2" cy="8" r=".95"/><circle cx="11" cy="6.6" r=".95"/><circle cx="12.6" cy="10.6" r=".95"/><circle cx="8.6" cy="12" r=".95"/></g></svg></span><span aria-hidden="true">nn</span><span class="i" aria-hidden="true">ı<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.8" fill="#fff" stroke="currentColor" stroke-width="2.2"/><g fill="#9cc4ad"><circle cx="7.2" cy="8" r=".95"/><circle cx="11" cy="6.6" r=".95"/><circle cx="12.6" cy="10.6" r=".95"/><circle cx="8.6" cy="12" r=".95"/></g></svg></span><span aria-hidden="true">golf</span></span><small>Punktakeppni í golfhermi – bestu hringirnir gilda</small></h1>
     <div class="account" id="account"></div>
   </header>
   <nav class="tabs" role="tablist" id="tabs">
