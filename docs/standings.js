@@ -58,7 +58,9 @@ function computeStandings(season, rounds, metric, opts = {}) {
     if (key !== prev) rank = i + 1;
     r.rank = rank; prev = key;
   });
-  return { rows, roundCount: inSeason.length, y };
+  // One golf night can have several scorecards (one per bay), so count nights, not cards.
+  const nights = new Set(inSeason.map(r => r.date)).size;
+  return { rows, roundCount: nights, y };
 }
 
 function countback(a, b) {
