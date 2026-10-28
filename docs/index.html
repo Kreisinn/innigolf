@@ -144,6 +144,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .drop.over { border-color: var(--turf); }
 .thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
 .thumbs img { width: 92px; height: 92px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+.cardshots { display: flex; flex-wrap: wrap; gap: 10px; }
+.cardshots img { display: block; max-width: min(100%, 420px); max-height: 420px; border-radius: 8px; border: 1px solid var(--line); }
 .entry td { padding: 6px 4px; }
 .entry input, .entry select { padding: 6px 8px; }
 .entry td.n input { width: 5.2em; text-align: right; }
@@ -202,6 +204,7 @@ const S = {
   loaded: false, seasonId: null, tab: 'next', metric: 'points',
   draft: null, photos: [], reading: false, readMsg: null, saveMsg: null,
   confirmDelete: null, editSeason: null, editPlayer: null, editEvent: null,
+  cards: {}, // round id -> 'loading' | 'error' | [signed photo urls] while a scorecard is open
   signinMsg: null, signinBusy: false, busy: false, flash: null,
   linkMsg: null, // result of answering from an email link
   remindAudience: 'unanswered', reminding: false, remindMsg: null,
@@ -239,7 +242,7 @@ S.draft = newDraft();
 /* ---------- data: Supabase rows <-> page objects ---------- */
 const fromSeason = r => ({ id: r.id, name: r.name, start: r.start_date, end: r.end_date, plannedRounds: r.planned_rounds, bestOf: r.best_of });
 const toSeason = s => ({ name: s.name, start_date: s.start, end_date: s.end, planned_rounds: s.plannedRounds, best_of: s.bestOf });
-const fromRound = r => ({ id: r.id, date: r.played_on, course: r.course, scores: r.scores || [], createdBy: r.created_by });
+const fromRound = r => ({ id: r.id, date: r.played_on, course: r.course, scores: r.scores || [], photos: r.photos || [], createdBy: r.created_by });
 const toRound = r => ({ played_on: r.date, course: r.course, scores: r.scores, updated_at: new Date().toISOString() });
 const fromPlayer = r => ({ id: r.id, name: r.name, ids: r.trackman_ids || [], active: r.active });
 const fromEvent = r => ({ id: r.id, date: r.event_date, time: r.start_time, location: r.location, notes: r.notes, remindedAt: r.reminded_at || null });
@@ -534,7 +537,7 @@ function viewAdd() {
   const dupes = d.date ? S.rounds.filter(r => r.date === d.date && r.id !== d.id) : [];
   const photo = photoOn() ? `
     <div class="drop" id="drop">
-      <div><h2>1 · Mynd af skorkorti</h2><div class="muted">Taktu mynd af Trackman-skorkortinu (eða skjámynd). Claude les nöfn, forgjöf, högg og punkta. Farðu yfir tölurnar áður en þú vistar.</div></div>
+      <div><h2>1 · Mynd af skorkorti</h2><div class="muted">Taktu mynd af Trackman-skorkortinu (eða skjámynd). Claude les nöfn, forgjöf, högg og punkta. Farðu yfir tölurnar áður en þú vistar; myndin geymist með hringnum.</div></div>
       <div class="row start">
         <label class="btn" for="photo-input">Velja myndir<input id="photo-input" type="file" accept="image/*" multiple hidden></label>
         <button class="btn primary" id="read-btn" ${S.photos.length && !S.reading ? '' : 'disabled'}>${S.reading ? 'Les skorkort…' : 'Lesa skorkort'}</button>
@@ -587,8 +590,9 @@ function viewRounds() {
         <div class="row"><div><b>${fmtDateLong(r.date)}</b> <span class="muted">${esc(r.course || '')}</span></div>
         ${canWrite() ? `<div class="row">${S.confirmDelete === r.id
           ? `<span class="muted">Eyða þessum hring?</span><button class="btn small danger" data-del-yes="${esc(r.id)}">Eyða</button><button class="btn small" data-del-no>Halda</button>`
-          : `<button class="btn small" data-edit="${esc(r.id)}">Breyta</button><button class="btn small danger" data-del="${esc(r.id)}">Eyða</button>`}</div>` : ''}</div>
+          : `${r.photos?.length && !DEMO ? `<button class="btn small" data-cards="${esc(r.id)}" aria-expanded="${!!S.cards[r.id]}">${S.cards[r.id] ? 'Fela skorkort' : 'Skoða skorkort'}</button>` : ''}<button class="btn small" data-edit="${esc(r.id)}">Breyta</button><button class="btn small danger" data-del="${esc(r.id)}">Eyða</button>`}</div>` : ''}</div>
         <div class="who">${sc.map(s => { const p = s.guest ? null : playerForScore(s, idx); return `<span>${esc(p?.name || s.card_name || s.player)}${s.guest ? ' <span class="pill">Gestur</span>' : ''} <b>${s.points ?? '–'}</b><span class="muted"> pkt · ${s.gross ?? '–'} högg</span></span>`; }).join('')}</div>
+        ${S.cards[r.id] === 'loading' ? '<div class="muted">Sæki skorkort…</div>' : S.cards[r.id] === 'error' ? '<div class="note warn">Ekki tókst að sækja skorkortið.</div>' : S.cards[r.id] ? `<div class="cardshots">${S.cards[r.id].map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Skorkort ${i + 1} frá ${esc(fmtDateLong(r.date))}" loading="lazy"></a>`).join('')}</div>` : ''}
       </div>`;
     }).join('')}
     ${outside ? `<p class="rules">${outside} ${one(outside) ? 'vistaður hringur er' : 'vistaðir hringir eru'} utan dagsetninga allra móta.</p>` : ''}
@@ -735,10 +739,17 @@ document.addEventListener('click', async ev => {
   if (t.dataset.delNo != null) { S.confirmDelete = null; render(); return; }
   if (t.dataset.delYes) {
     const id = t.dataset.delYes;
+    const photos = S.rounds.find(r => r.id === id)?.photos || [];
     if (DEMO) S.rounds = S.rounds.filter(r => r.id !== id);
-    else { const { error } = await S.sb.from('rounds').delete().eq('id', id); if (error) console.warn(error); await loadAll(); }
+    else {
+      const { error } = await S.sb.from('rounds').delete().eq('id', id);
+      if (error) console.warn(error);
+      else if (photos.length) await S.sb.storage.from('scorecards').remove(photos);
+      await loadAll();
+    }
     S.confirmDelete = null; render(); return;
   }
+  if (t.dataset.cards) return toggleCards(t.dataset.cards);
   if (t.dataset.link != null) return linkCardName(t.dataset.card, $('#link-' + t.dataset.link)?.value);
   // Leikmenn
   if (t.id === 'p-new') { S.editPlayer = { id: null, name: '', ids: '', email: '', admin: false, active: true }; S.confirmDelete = null; render(); focus('#p-name'); return; }
@@ -902,15 +913,41 @@ function addPhotos(files) {
   S.readMsg = null; render();
 }
 
-// Shrink a phone photo to at most 1600px on its long side as JPEG, so uploads stay small.
-async function toJpegBase64(file) {
+// Shrink a phone photo to at most 1600px on its long side, so uploads and storage stay small.
+async function toJpegCanvas(file) {
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
   if (!bmp) throw new Error('decode');
   const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');
   c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.85).split(',')[1];
+  return c;
+}
+async function toJpegBase64(file) { return (await toJpegCanvas(file)).toDataURL('image/jpeg', 0.85).split(',')[1]; }
+async function toJpegBlob(file) {
+  const c = await toJpegCanvas(file);
+  return new Promise((ok, bad) => c.toBlob(b => b ? ok(b) : bad(new Error('encode')), 'image/jpeg', 0.85));
+}
+
+// Keep the scorecard photos with the round, in private storage only league members can open.
+async function uploadPhotos(roundId) {
+  const paths = [];
+  for (const [i, p] of S.photos.entries()) {
+    const path = `${roundId}/${i + 1}-${Date.now()}.jpg`;
+    const { error } = await S.sb.storage.from('scorecards').upload(path, await toJpegBlob(p.file), { contentType: 'image/jpeg' });
+    if (error) throw error;
+    paths.push(path);
+  }
+  return paths;
+}
+
+async function toggleCards(roundId) {
+  if (S.cards[roundId]) { delete S.cards[roundId]; render(); return; }
+  const r = S.rounds.find(x => x.id === roundId); if (!r?.photos?.length) return;
+  S.cards[roundId] = 'loading'; render();
+  const { data, error } = await S.sb.storage.from('scorecards').createSignedUrls(r.photos, 3600);
+  S.cards[roundId] = error ? 'error' : data.map(x => x.signedUrl).filter(Boolean);
+  render();
 }
 
 /* ---------- Claude les skorkortið (read-scorecard) ---------- */
@@ -975,15 +1012,27 @@ async function saveRound() {
   S.busy = true; render();
   // Remember new Trackman names so the next scorecard matches by itself.
   const learn = rows.filter(s => s.pick && s.pick !== 'guest' && normCardName(s.card) && findPlayer(s.card)?.id !== s.pick);
-  let clash = [];
+  let clash = [], photoFail = false;
   if (DEMO) {
     for (const s of learn) { const p = playerById(s.pick); if (!aliasIndex().has(normCardName(s.card))) p.ids.push(normCardName(s.card)); else clash.push(s.card); }
     if (d.id) S.rounds = S.rounds.map(r => r.id === d.id ? round : r);
     else S.rounds.push({ ...round, id: 'demo-' + Date.now() });
   } else {
-    const q = d.id ? S.sb.from('rounds').update(toRound(round)).eq('id', d.id).select() : S.sb.from('rounds').insert(toRound(round)).select();
+    let insert = null;
+    if (!d.id) {
+      insert = { ...toRound(round), id: crypto.randomUUID(), photos: [] };
+      if (S.photos.length) {
+        try { insert.photos = await uploadPhotos(insert.id); }
+        catch (e) { console.warn(e); photoFail = true; }
+      }
+    }
+    const q = d.id ? S.sb.from('rounds').update(toRound(round)).eq('id', d.id).select() : S.sb.from('rounds').insert(insert).select();
     const { data, error } = await q;
-    if (error || !data?.length) { S.busy = false; console.warn(error); return fail(error ? 'Ekki tókst að vista. Athugaðu nettenginguna og reyndu aftur.' : 'Ekki vistað: aðgangurinn þinn má ekki breyta hringjum.'); }
+    if (error || !data?.length) {
+      S.busy = false; console.warn(error);
+      if (insert?.photos.length) await S.sb.storage.from('scorecards').remove(insert.photos);
+      return fail(error ? 'Ekki tókst að vista. Athugaðu nettenginguna og reyndu aftur.' : 'Ekki vistað: aðgangurinn þinn má ekki breyta hringjum.');
+    }
     for (const s of learn) {
       const { data: ok, error: e2 } = await S.sb.rpc('add_trackman_id', { p_player: s.pick, p_card_name: s.card });
       if (e2 || ok === false) clash.push(s.card);
@@ -994,8 +1043,12 @@ async function saveRound() {
   const season = seasonForDate(S.seasons, d.date);
   S.photos.forEach(p => URL.revokeObjectURL(p.url));
   S.photos = []; S.readMsg = null; S.draft = newDraft();
-  S.saveMsg = { kind: clash.length ? 'warn' : 'ok', text: clash.length ? `Hringurinn var vistaður. ${clash.join(', ')} tilheyrir öðrum leikmanni og var ekki bætt við skrána.` : 'Hringurinn var vistaður.' };
-  if (season && !clash.length) { S.seasonId = season.id; S.tab = 'standings'; }
+  const notes = [
+    clash.length ? `${clash.join(', ')} tilheyrir öðrum leikmanni og var ekki bætt við skrána.` : '',
+    photoFail ? 'Myndin af skorkortinu vistaðist ekki.' : '',
+  ].filter(Boolean).join(' ');
+  S.saveMsg = { kind: notes ? 'warn' : 'ok', text: `Hringurinn var vistaður.${notes ? ' ' + notes : ''}` };
+  if (season && !notes) { S.seasonId = season.id; S.tab = 'standings'; }
   render();
 }
 

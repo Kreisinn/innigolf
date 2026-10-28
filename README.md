@@ -103,6 +103,7 @@ The sign-in emails come from Supabase and are in English by default. To translat
 - **Players:** League → **Register a player**. Give each player a name, the **Trackman IDs** they appear under on scorecards (e.g. `KIDDIEIKA66`), and their email if they should sign in to answer and add rounds. Tick **Organiser** for anyone who should manage players, nights and competitions.
 - **Matching scorecards:** each name on a scorecard is matched to a player by Trackman ID (ignoring case), or by name. A long name the card cuts off with "..." still matches if only one player's name or ID starts that way. When a name isn't recognised, the person adding the round picks the player and the ID is remembered for next time. Older rounds with unknown names show up under League → **Scorecard names to link**. A score marked **Guest** is saved but never counts in the standings.
 - **Ranking:** Stableford is ranked on the total of each player's best y rounds in that competition. Ties go to the better best counting round, then the next best. The Gross view ranks the lowest average gross over the best y rounds.
+- **Scorecard photos:** photos read with the photo reader are kept with their round in a private Supabase Storage bucket (`scorecards`). Signed-in league members can open them from the **Hringir** tab (**Skoða skorkort**); nobody else can. Deleting a round deletes its photos. Rounds saved before 28 October 2026 have no photo.
 - **Next winter:** add new competitions on the League tab; old ones stay viewable.
 
 ## Files
