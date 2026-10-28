@@ -240,6 +240,8 @@ const addDays = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.get
 const one = n => n % 10 === 1 && n % 100 !== 11;
 const plural = (n, sg, pl) => `${n} ${one(n) ? sg : pl}`;
 
+// League nights a round can be saved to: every night up to today, newest first.
+const pastNights = () => S.events.filter(e => e.date <= today()).sort((a, b) => b.date.localeCompare(a.date));
 function newDraft() { return { id: null, date: today(), course: '', scores: [blankScore(), blankScore(), blankScore(), blankScore()] }; }
 function blankScore() { return { card: '', pick: '', hcp: '', gross: '', points: '' }; }
 S.draft = newDraft();
@@ -544,6 +546,9 @@ function playerSelect(i, pick) {
 function viewAdd() {
   if (!canWrite()) return signInPanel('skrá skor');
   const d = S.draft;
+  const nights = pastNights();
+  // A new round starts on the latest night; an older round keeps its own date even if no night matches it.
+  if (!d.id && nights.length && !nights.some(e => e.date === d.date)) d.date = nights[0].date;
   const season = seasonForDate(S.seasons, d.date);
   const mapping = S.register && S.players.length > 0;
   const dupes = d.date ? S.rounds.filter(r => r.date === d.date && r.id !== d.id) : [];
@@ -561,7 +566,11 @@ function viewAdd() {
     ${d.id ? `<div class="note">Þú ert að breyta hringnum frá ${fmtDateLong(d.date)}. <button class="btn small" id="cancel-edit">Hætta við</button></div>` : photo}
     <h2>${d.id ? 'Hringurinn' : (photo ? '2 · Yfirfara og vista' : 'Sláðu inn skorin')}</h2>
     <div class="grid2">
-      <label class="f" for="f-date">Dagsetning<input id="f-date" type="date" value="${esc(d.date)}"></label>
+      ${nights.length ? `<label class="f" for="f-date">Golfkvöld<select id="f-date">
+        ${nights.some(e => e.date === d.date) ? '' : `<option value="${esc(d.date)}" selected>${fmtDateLong(d.date)}</option>`}
+        ${nights.map(e => { const n = S.rounds.filter(r => r.date === e.date && r.id !== d.id).length; return `<option value="${esc(e.date)}" ${e.date === d.date ? 'selected' : ''}>${fmtDateLong(e.date)}${n ? ` (${n} skorkort ${one(n) ? 'vistað' : 'vistuð'})` : ''}</option>`; }).join('')}
+      </select></label>`
+      : `<label class="f" for="f-date">Dagsetning<input id="f-date" type="date" value="${esc(d.date)}"></label>`}
       <label class="f" for="f-course">Völlur<input id="f-course" value="${esc(d.course)}" placeholder="t.d. Pebble Beach"></label>
     </div>
     <div class="note ${season ? 'ok' : 'warn'}">${season ? `Gildir í <b>${esc(season.name)}</b>.` : 'Þessi dagsetning er utan allra móta. Hringurinn vistast en gildir ekki.'}${dupes.length ? ` Hringur á þessum degi er þegar vistaður (${dupes.map(r => esc(r.course || 'enginn völlur')).join(', ')}).` : ''}</div>
@@ -985,7 +994,8 @@ async function readScorecard() {
       return { card, pick: findPlayer(card, idx)?.id || '', hcp: clean(p.hcp), gross: clean(p.gross), points: clean(p.points) };
     });
     if (data.course && !S.draft.course) S.draft.course = String(data.course);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(data.date || '')) S.draft.date = data.date;
+    // Take the card's date only if it is a league night (or there are no nights to pick from).
+    if (/^\d{4}-\d{2}-\d{2}$/.test(data.date || '') && (!pastNights().length || pastNights().some(e => e.date === data.date))) S.draft.date = data.date;
     const unsure = Array.isArray(data.uncertain) && data.uncertain.length ? ' Athugaðu: ' + data.uncertain.join('; ') + '.' : '';
     const missing = S.draft.scores.some(s => s.points === '') ? ' Punkta vantaði á kortið fyrir suma; fylltu þá inn.' : '';
     const unlinked = S.register && S.players.length ? S.draft.scores.filter(s => !s.pick).length : 0;
