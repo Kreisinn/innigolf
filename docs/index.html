@@ -91,6 +91,11 @@ tr.lead td.rank { color: var(--gold); }
 td.player { font-weight: 600; white-space: nowrap; }
 td.total { font: 700 1.5rem/1 var(--display); text-align: right; }
 .cards { display: flex; flex-wrap: wrap; gap: 4px; }
+.cards.nights { flex-wrap: nowrap; }
+.cards.nights .sc { width: 2.6em; min-width: 0; flex: none; padding-inline: 0; }
+.sc.miss { text-decoration: none; opacity: .8; }
+.sc.day { background: none; text-decoration: none; padding-block: 0; font-size: .7rem; letter-spacing: 0; text-transform: none; }
+th .nights { margin-top: 6px; }
 .sc { min-width: 2.1em; text-align: center; padding: 3px 5px; border-radius: 4px; font: 600 .85rem/1.1 var(--body); background: var(--sunk); color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
 .sc.counts { background: var(--turf-soft); color: var(--ink); text-decoration: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--turf) 45%, transparent); }
 .pill { display: inline-block; font: 600 .7rem/1 var(--body); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
@@ -189,7 +194,7 @@ h1.brand small { font-family: var(--body); }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
-<script src="standings.js"></script>
+<script src="standings.js?v=2"></script>
 <script>
 const CFG = window.LEAGUE_CONFIG || {};
 const PARAMS = new URLSearchParams(location.search);
@@ -479,6 +484,13 @@ function viewReminder(ev, players, none) {
 }
 
 /* ---------- Staðan ---------- */
+// One cell per golf night: the player's score that night, or – if they didn't play.
+const dayMonth = iso => `${+iso.slice(8, 10)}.${+iso.slice(5, 7)}.`;
+function nightCell(row, date) {
+  const es = row.entries.filter(e => e.date === date && e[S.metric] != null);
+  if (!es.length) return `<span class="sc miss" title="${fmtDateLong(date)}: ekkert skor">–</span>`;
+  return es.map(e => `<span class="sc ${e.counts ? 'counts' : ''}" title="${fmtDateLong(e.date)}${e.counts ? '' : ' (gildir ekki)'}">${e[S.metric]}</span>`).join('');
+}
 function viewStandings() {
   const season = currentSeason();
   if (!season) return `<div class="panel empty"><h2>Ekkert mót valið</h2><p>${S.loaded ? 'Búðu til haust-, jóla- og vormót undir Deildin.' : 'Hleð…'}</p></div>`;
@@ -504,7 +516,7 @@ function viewStandings() {
     <tr class="${r.rank === 1 ? 'lead' : ''}">
       <td class="rank">${r.rank}</td>
       <td class="player">${esc(r.name)}${S.register && r.key.startsWith('card:') ? ' <span class="pill">Ekki tengt</span>' : ''}${!r.complete && S.metric === 'gross' ? ' <span class="pill">Vantar ' + (st.y - r.counting.length) + '</span>' : ''}</td>
-      <td><div class="cards">${r.entries.map(e => e[S.metric] == null ? '' : `<span class="sc ${e.counts ? 'counts' : ''}" title="${fmtDateLong(e.date)}${e.counts ? '' : ' (gildir ekki)'}">${e[S.metric]}</span>`).join('')}</div></td>
+      <td><div class="cards nights">${st.nights.map(d => nightCell(r, d)).join('')}</div></td>
       <td class="r num hide-sm">${r.played}</td>
       <td class="r num hide-sm">${r.best ?? '–'}</td>
       <td class="r num hide-sm">${r.avg == null ? '–' : fmtDec(r.avg)}</td>
@@ -512,7 +524,7 @@ function viewStandings() {
     </tr>`).join('');
   return `<div class="panel">${head}
     <div class="scroll"><table>
-      <thead><tr><th>#</th><th>Leikmaður</th><th>Hringir (gildandi auðkenndir)</th><th class="r hide-sm">Spilað</th><th class="r hide-sm">Besti</th><th class="r hide-sm">Meðaltal</th><th class="r">${S.metric === 'points' ? 'Bestu ' + st.y + ', punktar' : 'Bestu ' + st.y + ', högg'}</th></tr></thead>
+      <thead><tr><th>#</th><th>Leikmaður</th><th>Hringir (gildandi auðkenndir)<div class="cards nights">${st.nights.map(d => `<span class="sc day">${dayMonth(d)}</span>`).join('')}</div></th><th class="r hide-sm">Spilað</th><th class="r hide-sm">Besti</th><th class="r hide-sm">Meðaltal</th><th class="r">${S.metric === 'points' ? 'Bestu ' + st.y + ', punktar' : 'Bestu ' + st.y + ', högg'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     ${unreg ? `<div class="note">Nöfn merkt <b>Ekki tengt</b> eru Trackman-auðkenni sem eru ekki tengd skráðum leikmanni.${canWrite() ? ' <button class="btn small" data-go="league">Tengja</button>' : ''}</div>` : ''}
